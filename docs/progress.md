@@ -12,7 +12,7 @@ Checkpoint file. Update after every phase. Designed so a fresh Claude Code sessi
 | 3 | Folder targets + sync client discovery | DONE | (in initial commit) | `Initial scaffold: Phases 0-3 CLI` |
 | 4 | Scheduler + retention (7/3/2) | DONE | #1 | `Phase 4: Retention rotation + Task Scheduler emitter` |
 | 5 | WPF GUI + tray | DONE (minimal, 5 tabs + tray) | #2 | `Phase 5: WPF GUI + tray` |
-| 6 | WiX MSI + signing + release workflow | TODO | #3 | - |
+| 6 | WiX MSI + signing + release workflow | DONE (MSI + release.yml; signing still pending) | #3 | `Phase 6: WiX MSI installer + release workflow` |
 
 ## Session log
 
@@ -30,6 +30,21 @@ Checkpoint file. Update after every phase. Designed so a fresh Claude Code sessi
 - Phase 4 complete: `RetentionManager` with promote + prune + manifest-in-zip tier rewrite, `TaskSchedulerEmitter` (Windows TS XML), `TaskSchedulerInstaller` (schtasks.exe wrapper). Auto-rotate wired into `backup` CLI; new `rotate` and `schedule install|show|remove|emit` subcommands.
 - Tests: 41 total, including 10-week simulated clock run. All green.
 - Design note: no Quartz.NET in-process scheduler. Windows Task Scheduler is more reliable for a CLI tool; Quartz would only matter once a persistent tray process exists (Phase 5).
+
+### Session 4 (2026-04-23) - Phase 6
+- Installed `wix` as a .NET global tool (v7.0.0); accepted the OSMF EULA (`wix eula accept wix7`); added the `WixToolset.UI.wixext` extension.
+- Replaced the placeholder Installer csproj with a WiX 7 SDK-style `.wixproj` plus `Product.wxs`. Used WiX 7's `<Files>` element (new in v7) to pick up the 272-file self-contained publish output without hand-maintaining components.
+- Install scope: `perMachine` (Program Files 64), matches spec section 6 Phase 6. ICE38/43/57/64 satisfied by keeping the shortcut's KeyPath in HKCU even though the package is perMachine.
+- Start-menu shortcut points to `claudeportable.exe --gui`, hides the CLI flash.
+- `build-msi.ps1` script drives local MSI build: publish self-contained win-x64 -> invoke wixproj. Produces `ClaudePortable-<version>.msi` (~61 MB).
+- `.github/workflows/release.yml`: runs on tag push (`v*`) or workflow_dispatch; installs WiX in CI, publishes + builds MSI + attaches as Release asset.
+- `.github/workflows/ci.yml` rewritten to build only the .csproj projects, not the whole solution, so the wixproj doesn't fail CI when `staging/` is absent.
+- Added to `.gitignore`: `src/ClaudePortable.Installer/staging/`, `*.msi`, `*.wixpdb`.
+- Not yet implemented (deliberate, documented in README + spec handover):
+  - Code signing (no cert available; SmartScreen warning on install).
+  - .NET Desktop Runtime bootstrapper check (circumvented by self-contained publish; spec called for framework-dependent + pre-req check).
+  - Uninstall confirmation dialog for user-data folder `%LOCALAPPDATA%\ClaudePortable\` (WiX MajorUpgrade handles upgrades; manual uninstall leaves user data behind which is the desired default).
+- 41 tests still green. MSI built locally in 33s.
 
 ### Session 3 (2026-04-22, same day) - Phase 5
 - App project flipped to `UseWPF=true` + `UseWindowsForms=true`, OutputType stays Exe so CLI still prints to console. Console flashes briefly on GUI launch -> Phase 6 MSI Start-menu shortcut mitigates this.

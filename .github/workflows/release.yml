@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to build (e.g. 0.1.0)"
+        required: true
+        default: "0.1.0"
+
+jobs:
+  build-msi:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+
+      - name: Install WiX 7
+        run: dotnet tool install --global wix --version 7.0.0
+
+      - name: Accept WiX EULA
+        run: wix eula accept wix7
+
+      - name: Determine version
+        id: ver
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "push") {
+            $v = "${{ github.ref_name }}".TrimStart("v")
+          } else {
+            $v = "${{ inputs.version }}"
+          }
+          Write-Output "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore ClaudePortable.slnx
+
+      - name: Test
+        run: dotnet test --configuration Release
+
+      - name: Publish App (self-contained win-x64)
+        run: |
+          dotnet publish src/ClaudePortable.App/ClaudePortable.App.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=false `
+            -p:InvariantGlobalization=false `
+            --output src/ClaudePortable.Installer/staging
+
+      - name: Build MSI
+        run: |
+          dotnet build src/ClaudePortable.Installer/ClaudePortable.Installer.wixproj `
+            --configuration Release `
+            -p:InstallerVersion=${{ steps.ver.outputs.version }} `
+            -p:PublishStageDir=${{ github.workspace }}\src\ClaudePortable.Installer\staging
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClaudePortable-${{ steps.ver.outputs.version }}.msi
+          path: src/ClaudePortable.Installer/bin/Release/ClaudePortable-${{ steps.ver.outputs.version }}.msi
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src/ClaudePortable.Installer/bin/Release/ClaudePortable-${{ steps.ver.outputs.version }}.msi
+          generate_release_notes: true

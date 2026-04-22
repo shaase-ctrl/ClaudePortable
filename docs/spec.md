@@ -567,7 +567,7 @@ Stand: 2026-04-22 (wird bei jedem Phase-Abschluss aktualisiert)
 | 3 Folder-Targets + Sync-Discovery | DONE (initial commit) | - |
 | 4 Scheduler + Retention | DONE (2026-04-22 session 2) | shaase-ctrl/ClaudePortable#1 |
 | 5 WPF-GUI + Tray | DONE (2026-04-22 session 3, minimal aber lauffaehig) | shaase-ctrl/ClaudePortable#2 |
-| 6 WiX MSI + Signing | TODO | shaase-ctrl/ClaudePortable#3 |
+| 6 WiX MSI + Signing | DONE MSI + release.yml (ohne Cert-Signing) (2026-04-23 session 4) | shaase-ctrl/ClaudePortable#3 |
 
 ### So resume ich in einer neuen Claude-Code-Session
 
@@ -585,4 +585,7 @@ Stand: 2026-04-22 (wird bei jedem Phase-Abschluss aktualisiert)
 - FluentAssertions v8 skipped (licensed); plain `Xunit.Assert` stattdessen.
 - Zwei zusaetzliche Exclusions in `DefaultExclusions.cs`: `**/LOCK`, `**/debug/latest` (aus Live-Backup-Test gelernt).
 - `FileShare.ReadWrite | FileShare.Delete` + try/catch-skip in `ZipArchiveWriter`, damit live-laufendes Claude Desktop gesichert werden kann.
+- MSI ist **nicht signiert**. SmartScreen zeigt "Unbekannter Herausgeber". Signing via `SignTool` + echtem Code-Signing-Zert folgt, sobald ein Cert verfuegbar ist.
+- MSI verwendet **self-contained publish** (bundles .NET 10 Runtime), daher keine .NET-Runtime-Vorbedingung fuer den User. Das macht das MSI ~61 MB gross (sonst waere es ~5 MB). Spec wollte framework-dependent + Pre-req-Check; wurde zugunsten von einfacher Distribution getauscht.
+- Phase 4 Retention + Phase 5 GUI + Phase 6 MSI sind alle minimale aber lauffaehige Implementierungen. Feinschliff (H.NotifyIcon, Quartz.NET, Signed MSI, .NET-Runtime-Check, Code-Signing-Workflow) ist in `docs/progress.md` und den offenen Issues gelistet.
 

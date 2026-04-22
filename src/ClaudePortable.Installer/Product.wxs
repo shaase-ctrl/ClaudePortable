@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="ClaudePortable"
+           Manufacturer="Sascha Haase"
+           Version="$(AppVersion)"
+           UpgradeCode="6d7e8f1c-2a3b-4c5d-9e0f-112233445566"
+           Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="ClaudePortable" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut" Guid="79b7f86d-0d56-4d61-a1ad-1f13c0a93b9e">
+        <Shortcut Id="StartMenuShortcut"
+                  Name="ClaudePortable"
+                  Description="Backup and restore Claude Desktop / Claude Code state"
+                  Target="[INSTALLFOLDER]claudeportable.exe"
+                  Arguments="--gui"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\ClaudePortable"
+                       Name="Installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <Feature Id="Core" Title="ClaudePortable Core" Level="1">
+      <ComponentRef Id="StartMenuShortcut" />
+      <Files Directory="INSTALLFOLDER" Include="$(AppStageDir)\**" />
+    </Feature>
+
+    <ui:WixUI Id="WixUI_InstallDir" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+  </Package>
+
+</Wix>

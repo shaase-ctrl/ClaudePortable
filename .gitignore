@@ -33,3 +33,8 @@ logs/
 
 # Local dev backups (when testing claudeportable itself)
 cpbackup*/
+
+# MSI installer staging (self-contained publish output, ~170 MB)
+src/ClaudePortable.Installer/staging/
+*.msi
+*.wixpdb

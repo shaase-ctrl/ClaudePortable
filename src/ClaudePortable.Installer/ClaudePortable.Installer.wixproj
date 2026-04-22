@@ -1,0 +1,19 @@
+<Project Sdk="WixToolset.Sdk/7.0.0">
+
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <OutputName>ClaudePortable-$(InstallerVersion)</OutputName>
+    <InstallerVersion Condition="'$(InstallerVersion)' == ''">0.1.0</InstallerVersion>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <PublishStageDir Condition="'$(PublishStageDir)' == ''">$(MSBuildProjectDirectory)\staging</PublishStageDir>
+    <DefineConstants>
+      AppVersion=$(InstallerVersion);
+      AppStageDir=$(PublishStageDir);
+    </DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="7.0.0" />
+  </ItemGroup>
+
+</Project>

@@ -2,7 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/ClaudePortable.App/ClaudePortable.App.csproj" />
     <Project Path="src/ClaudePortable.Core/ClaudePortable.Core.csproj" />
-    <Project Path="src/ClaudePortable.Installer/ClaudePortable.Installer.csproj" />
+    <Project Path="src/ClaudePortable.Installer/ClaudePortable.Installer.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0" />
     <Project Path="src/ClaudePortable.Scheduler/ClaudePortable.Scheduler.csproj" />
     <Project Path="src/ClaudePortable.Targets/ClaudePortable.Targets.csproj" />
   </Folder>
