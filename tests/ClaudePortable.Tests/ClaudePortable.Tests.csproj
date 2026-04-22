@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ClaudePortable.Core\ClaudePortable.Core.csproj" />
     <ProjectReference Include="..\..\src\ClaudePortable.Targets\ClaudePortable.Targets.csproj" />
+    <ProjectReference Include="..\..\src\ClaudePortable.Scheduler\ClaudePortable.Scheduler.csproj" />
   </ItemGroup>
 
 </Project>

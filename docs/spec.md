@@ -543,3 +543,46 @@ Nicht vergessen: `LICENSE`-Datei im Repo, `THIRD-PARTY-NOTICES.md` für die NuGe
 ---
 
 **Ende der Anleitung. Gesamte geschätzte Claude-Code-Laufzeit: 18 Stunden über 6 Phasen.**
+
+---
+
+## Claude-Code-Fortschritt (fuer Resume)
+
+<!--
+HANDOVER-NOTE fuer kuenftige Claude-Code-Sessions.
+Stand: 2026-04-22 (wird bei jedem Phase-Abschluss aktualisiert)
+-->
+
+**Projekt-Repo:** https://github.com/shaase-ctrl/ClaudePortable (public, MIT).
+**Source lokal:** `C:\Users\Sascha Haase\dev\ClaudePortable\`.
+**Checkpoint-Dokument:** `docs/progress.md` im Repo - ENTHAELT pro Session den aktuellen Stand, offene Risiken, Next-Steps. IMMER zuerst lesen.
+
+### Phasen-Fortschritt
+
+| Phase | Status | Issue |
+|---|---|---|
+| 0 Discovery | Partially done (ASSUMED-Rows bis ProcMon-Output) | shaase-ctrl/ClaudePortable#4 |
+| 1 Backup-Core | DONE (initial commit) | - |
+| 2 Restore + Path-Rewrite | DONE (initial commit) | - |
+| 3 Folder-Targets + Sync-Discovery | DONE (initial commit) | - |
+| 4 Scheduler + Retention | DONE (2026-04-22 session 2) | shaase-ctrl/ClaudePortable#1 |
+| 5 WPF-GUI + Tray | TODO | shaase-ctrl/ClaudePortable#2 |
+| 6 WiX MSI + Signing | TODO | shaase-ctrl/ClaudePortable#3 |
+
+### So resume ich in einer neuen Claude-Code-Session
+
+1. Clone/open: `C:\Users\Sascha Haase\dev\ClaudePortable\`
+2. `docs/progress.md` lesen - das ist der Einstiegspunkt.
+3. `gh auth status` pruefen; falls unauth: `gh auth login --web` (User macht den Browser-Flow).
+4. `dotnet build -c Release` + `dotnet test -c Release` zur Sanity.
+5. Naechstes offenes Issue-Item oeffnen und daran weiterarbeiten.
+6. Nach Phase-Ende: `docs/progress.md` aktualisieren, Commit + Push, Issue schliessen, diesen Abschnitt hier ebenfalls aktualisieren.
+
+### Bekannte Abweichungen von der Spec
+
+- Target-Framework `net10.0` / `net10.0-windows` statt `net8.0` (nur .NET 10 SDK installiert).
+- Kein Quartz.NET in Phase 4 - Windows Task Scheduler Integration statt in-process Scheduler. Begruendung in `docs/progress.md`.
+- FluentAssertions v8 skipped (licensed); plain `Xunit.Assert` stattdessen.
+- Zwei zusaetzliche Exclusions in `DefaultExclusions.cs`: `**/LOCK`, `**/debug/latest` (aus Live-Backup-Test gelernt).
+- `FileShare.ReadWrite | FileShare.Delete` + try/catch-skip in `ZipArchiveWriter`, damit live-laufendes Claude Desktop gesichert werden kann.
+

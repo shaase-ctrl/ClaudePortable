@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ClaudePortable.Core\ClaudePortable.Core.csproj" />
     <ProjectReference Include="..\ClaudePortable.Targets\ClaudePortable.Targets.csproj" />
+    <ProjectReference Include="..\ClaudePortable.Scheduler\ClaudePortable.Scheduler.csproj" />
   </ItemGroup>
 
   <ItemGroup>

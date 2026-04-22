@@ -13,6 +13,8 @@ public static class Program
         root.AddCommand(RestoreCommand.Build());
         root.AddCommand(ListCommand.Build());
         root.AddCommand(DiscoverCommand.Build());
+        root.AddCommand(ScheduleCommand.Build());
+        root.AddCommand(RotateCommand.Build());
 
         return await root.InvokeAsync(args).ConfigureAwait(false);
     }

@@ -1,12 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <Description>Placeholder for Phase 4 scheduler. Not implemented yet.</Description>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <Description>ClaudePortable retention manager and Windows Task Scheduler emitter (spec Phase 4).</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClaudePortable.Core\ClaudePortable.Core.csproj" />
+    <ProjectReference Include="..\ClaudePortable.Targets\ClaudePortable.Targets.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ClaudePortable.Tests" />
+  </ItemGroup>
 
 </Project>
