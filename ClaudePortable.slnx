@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ClaudePortable.App/ClaudePortable.App.csproj" />
+    <Project Path="src/ClaudePortable.Core/ClaudePortable.Core.csproj" />
+    <Project Path="src/ClaudePortable.Installer/ClaudePortable.Installer.csproj" />
+    <Project Path="src/ClaudePortable.Scheduler/ClaudePortable.Scheduler.csproj" />
+    <Project Path="src/ClaudePortable.Targets/ClaudePortable.Targets.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ClaudePortable.Tests/ClaudePortable.Tests.csproj" />
+  </Folder>
+</Solution>

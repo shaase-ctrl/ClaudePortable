@@ -1,0 +1,35 @@
+# .NET build output
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+.vs/
+.vscode/
+.idea/
+
+# NuGet
+*.nupkg
+.nuget/
+
+# Rider / ReSharper
+_ReSharper*/
+*.DotSettings.user
+
+# Test + coverage
+[Tt]est[Rr]esult*/
+coverage/
+*.coverage
+*.coveragexml
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Local dev backups (when testing claudeportable itself)
+cpbackup*/
