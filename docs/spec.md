@@ -566,7 +566,7 @@ Stand: 2026-04-22 (wird bei jedem Phase-Abschluss aktualisiert)
 | 2 Restore + Path-Rewrite | DONE (initial commit) | - |
 | 3 Folder-Targets + Sync-Discovery | DONE (initial commit) | - |
 | 4 Scheduler + Retention | DONE (2026-04-22 session 2) | shaase-ctrl/ClaudePortable#1 |
-| 5 WPF-GUI + Tray | TODO | shaase-ctrl/ClaudePortable#2 |
+| 5 WPF-GUI + Tray | DONE (2026-04-22 session 3, minimal aber lauffaehig) | shaase-ctrl/ClaudePortable#2 |
 | 6 WiX MSI + Signing | TODO | shaase-ctrl/ClaudePortable#3 |
 
 ### So resume ich in einer neuen Claude-Code-Session

@@ -59,7 +59,7 @@ public static class ListCommand
             foreach (var b in backups)
             {
                 var tier = b.Manifest?.RetentionTier.ToString().ToLowerInvariant() ?? "?";
-                var created = b.Manifest?.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss") ?? "?";
+                var created = b.Manifest?.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) ?? "?";
                 Console.WriteLine($"{tier,-8} {created,-20} {b.SizeBytes,10:N0}  {b.FileName}");
             }
         }, inOption, jsonOption);
