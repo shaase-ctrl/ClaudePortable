@@ -4,11 +4,22 @@ using ClaudePortable.Core.Manifest;
 
 namespace ClaudePortable.Targets;
 
-public sealed record BackupDescriptor(string FileName, string FullPath, long SizeBytes, BackupManifest? Manifest);
+public sealed record BackupDescriptor(
+    string FileName,
+    string FullPath,
+    long SizeBytes,
+    BackupManifest? Manifest,
+    bool IsCloudOnly);
 
 [SupportedOSPlatform("windows")]
 public sealed class FolderTarget
 {
+    // Chromium/OneDrive use this attribute bit to mark files that are
+    // "cloud-only" placeholders and have to be re-downloaded before open.
+    // .NET's FileAttributes enum does not expose it, so we cast manually.
+    private const FileAttributes RecallOnDataAccess = (FileAttributes)0x00400000;
+    private const FileAttributes RecallOnOpen = (FileAttributes)0x00040000;
+
     public string FolderPath { get; }
 
     public FolderTarget(string folderPath)
@@ -44,8 +55,7 @@ public sealed class FolderTarget
             return false;
         }
         var attrs = File.GetAttributes(FolderPath);
-        const FileAttributes recallOnDataAccess = (FileAttributes)0x00400000;
-        return (attrs & (FileAttributes.Offline | recallOnDataAccess)) != 0;
+        return (attrs & (FileAttributes.Offline | RecallOnDataAccess | RecallOnOpen)) != 0;
     }
 
     public IReadOnlyList<BackupDescriptor> ListBackups()
@@ -59,8 +69,12 @@ public sealed class FolderTarget
         foreach (var file in Directory.EnumerateFiles(FolderPath, "claude-backup_*.zip"))
         {
             var info = new FileInfo(file);
-            var manifest = TryReadManifest(file);
-            result.Add(new BackupDescriptor(info.Name, info.FullName, info.Length, manifest));
+            var cloudOnly = IsCloudOnlyFile(info);
+            // Skip manifest probe on cloud-only files; opening the ZIP would
+            // trigger a blocking download and we want the list operation to
+            // stay O(1) on file count.
+            var manifest = cloudOnly ? null : TryReadManifest(file);
+            result.Add(new BackupDescriptor(info.Name, info.FullName, info.Length, manifest, cloudOnly));
         }
         return result.OrderByDescending(b => b.FileName, StringComparer.Ordinal).ToList();
     }
@@ -83,6 +97,12 @@ public sealed class FolderTarget
         {
             File.Delete(path);
         }
+    }
+
+    private static bool IsCloudOnlyFile(FileInfo info)
+    {
+        var attrs = info.Attributes;
+        return (attrs & (FileAttributes.Offline | RecallOnDataAccess | RecallOnOpen)) != 0;
     }
 
     private static BackupManifest? TryReadManifest(string zipPath)

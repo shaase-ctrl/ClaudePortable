@@ -237,7 +237,10 @@
 
                     <TextBlock Style="{DynamicResource H1}" Text="Restore" />
                     <TextBlock Style="{DynamicResource Caption}" TextWrapping="Wrap" Margin="0,0,0,20" Grid.Row="1">
-                        Select a backup and confirm. ClaudePortable moves the current Claude data aside to
+                        Select a snapshot from a configured target or browse to any
+                        <Run FontFamily="{DynamicResource MonoFont}">claude-backup_*.zip</Run> on disk
+                        (handy when you moved to another machine). ClaudePortable moves the current
+                        Claude data aside to
                         <Run FontFamily="{DynamicResource MonoFont}">&lt;folder&gt;_backup_&lt;timestamp&gt;</Run>
                         before restoring — nothing is deleted.
                     </TextBlock>
@@ -248,6 +251,7 @@
                         <DataGrid ItemsSource="{Binding Backups}" SelectedItem="{Binding SelectedBackup}"
                                   AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
                             <DataGrid.Columns>
+                                <DataGridTextColumn Header="STATUS" Binding="{Binding StatusLabel}" Width="Auto" />
                                 <DataGridTextColumn Header="TIER" Binding="{Binding Manifest.RetentionTier}" Width="Auto" />
                                 <DataGridTextColumn Header="CREATED" Binding="{Binding Manifest.CreatedAt, StringFormat=yyyy-MM-dd HH:mm}" Width="Auto" />
                                 <DataGridTextColumn Header="HOSTNAME" Binding="{Binding Manifest.Hostname}" Width="Auto" />
@@ -256,10 +260,14 @@
                         </DataGrid>
                     </Border>
 
-                    <Button Content="Restore selected snapshot"
-                            Style="{DynamicResource PrimaryButton}"
-                            Command="{Binding RestoreCommand}"
-                            HorizontalAlignment="Left" Margin="0,16,0,0" Grid.Row="4" />
+                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0" Grid.Row="4">
+                        <Button Content="Restore selected snapshot"
+                                Style="{DynamicResource PrimaryButton}"
+                                Command="{Binding RestoreCommand}"
+                                Margin="0,0,8,0" />
+                        <Button Content="Restore from file..."
+                                Command="{Binding RestoreFromFileCommand}" />
+                    </StackPanel>
                 </Grid>
             </TabItem>
 

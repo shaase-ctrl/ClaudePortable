@@ -16,6 +16,8 @@ namespace ClaudePortable.App.Ui.ViewModels;
 [SupportedOSPlatform("windows")]
 public sealed class MainViewModel : ViewModelBase
 {
+    private const string DefaultBackupFolderName = "ClaudePortable";
+
     private readonly TargetStore _store = new();
     private string _status = "Ready.";
 
@@ -23,6 +25,7 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<BackupEntry> Backups { get; } = new();
     public ObservableCollection<DiscoveredClaudePath> ClaudePaths { get; } = new();
     public ObservableCollection<DiscoveredSyncClient> SyncClients { get; } = new();
+
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "Instance binding target for XAML.")]
     public ObservableCollection<string> LogEntries => UiLogSink.Instance.Entries;
 
@@ -37,6 +40,7 @@ public sealed class MainViewModel : ViewModelBase
     public RelayCommand AddTargetCommand { get; }
     public RelayCommand RemoveTargetCommand { get; }
     public AsyncRelayCommand RestoreCommand { get; }
+    public AsyncRelayCommand RestoreFromFileCommand { get; }
 
     public TargetEntry? SelectedTarget { get; set; }
     public BackupEntry? SelectedBackup { get; set; }
@@ -47,6 +51,8 @@ public sealed class MainViewModel : ViewModelBase
         {
             Targets.Add(new TargetEntry(path));
         }
+
+        var discoveredCount = AutoDiscoverSyncedTargets();
         if (Targets.Count == 0)
         {
             var suggested = SuggestDefaultTarget();
@@ -56,12 +62,18 @@ public sealed class MainViewModel : ViewModelBase
                 _store.Save(Targets.Select(t => t.Path).ToArray());
             }
         }
+        if (discoveredCount > 0)
+        {
+            _store.Save(Targets.Select(t => t.Path).ToArray());
+            UiLogSink.Instance.Append($"auto-discovered {discoveredCount} ClaudePortable folder(s) from sync clients.");
+        }
 
         BackupNowCommand = new AsyncRelayCommand(BackupNowAsync);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         AddTargetCommand = new RelayCommand(AddTarget);
         RemoveTargetCommand = new RelayCommand(RemoveTarget, () => SelectedTarget is not null);
         RestoreCommand = new AsyncRelayCommand(RestoreAsync, () => SelectedBackup is not null);
+        RestoreFromFileCommand = new AsyncRelayCommand(RestoreFromFileAsync);
 
         _ = RefreshAsync();
     }
@@ -84,7 +96,7 @@ public sealed class MainViewModel : ViewModelBase
             var target = new FolderTarget(t.Path);
             foreach (var b in target.ListBackups())
             {
-                Backups.Add(new BackupEntry(t.Path, b.FileName, b.FullPath, b.SizeBytes, b.Manifest));
+                Backups.Add(new BackupEntry(t.Path, b.FileName, b.FullPath, b.SizeBytes, b.Manifest, b.IsCloudOnly));
             }
         }
         await Task.CompletedTask.ConfigureAwait(true);
@@ -152,21 +164,55 @@ public sealed class MainViewModel : ViewModelBase
         {
             return;
         }
-        var result = System.Windows.MessageBox.Show(
-            $"Restore from:\n{SelectedBackup.FileName}\n\nExisting Claude data will be moved to <folder>_backup_<timestamp>. Proceed?",
-            "Confirm restore",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning);
-        if (result != System.Windows.MessageBoxResult.Yes)
+        if (SelectedBackup.IsCloudOnly)
+        {
+            var proceed = System.Windows.MessageBox.Show(
+                $"'{SelectedBackup.FileName}' is currently cloud-only (placeholder). The restore will trigger a download and may take several minutes depending on backup size.\n\nProceed?",
+                "Cloud-only backup",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Information);
+            if (proceed != System.Windows.MessageBoxResult.Yes)
+            {
+                return;
+            }
+        }
+        await RunRestoreAsync(SelectedBackup.FullPath, SelectedBackup.FileName).ConfigureAwait(true);
+    }
+
+    public async Task RestoreFromFileAsync()
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Pick a ClaudePortable backup ZIP",
+            Filter = "ClaudePortable backups (*.zip)|claude-backup_*.zip|All ZIP files (*.zip)|*.zip",
+            CheckFileExists = true,
+            Multiselect = false,
+        };
+        if (dlg.ShowDialog() != true)
         {
             return;
         }
+        await RunRestoreAsync(dlg.FileName, Path.GetFileName(dlg.FileName)).ConfigureAwait(true);
+    }
+
+    private async Task RunRestoreAsync(string zipPath, string displayName)
+    {
+        var confirm = System.Windows.MessageBox.Show(
+            $"Restore from:\n{displayName}\n\nExisting Claude data will be moved to <folder>_backup_<timestamp>. Proceed?",
+            "Confirm restore",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+        if (confirm != System.Windows.MessageBoxResult.Yes)
+        {
+            return;
+        }
+
         Status = "Restoring...";
-        UiLogSink.Instance.Append($"restore starting: {SelectedBackup.FileName}");
+        UiLogSink.Instance.Append($"restore starting: {displayName}");
         try
         {
             var engine = new RestoreEngine(new PathRewriter());
-            var outcome = await engine.RestoreAsync(new RestoreRequest(SelectedBackup.FullPath, Confirmed: true)).ConfigureAwait(true);
+            var outcome = await engine.RestoreAsync(new RestoreRequest(zipPath, Confirmed: true)).ConfigureAwait(true);
             UiLogSink.Instance.Append($"restore complete. safety backups: {outcome.SafetyBackups.Count}");
             UiLogSink.Instance.Append($"version gate: {outcome.VersionGate.Level} - {outcome.VersionGate.Message}");
             Status = $"Restore complete. Checklist: {outcome.PostRestoreChecklistPath}";
@@ -179,13 +225,48 @@ public sealed class MainViewModel : ViewModelBase
         await RefreshAsync().ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// For every detected sync client (OneDrive, Dropbox, GDrive Desktop, ...)
+    /// check whether the user already has a folder called "ClaudePortable"
+    /// inside it. If yes and it is not already tracked, add it. This is how a
+    /// second machine (laptop) sees backups created on the first machine
+    /// (workstation) without the user having to configure anything.
+    /// </summary>
+    private int AutoDiscoverSyncedTargets()
+    {
+        var added = 0;
+        foreach (var client in new SyncClientDiscovery().Discover())
+        {
+            if (!client.IsAvailable || string.IsNullOrEmpty(client.Path) || !Directory.Exists(client.Path))
+            {
+                continue;
+            }
+            var candidate = Path.Combine(client.Path, DefaultBackupFolderName);
+            if (!Directory.Exists(candidate))
+            {
+                continue;
+            }
+            if (Targets.Any(t => string.Equals(t.Path, candidate, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+            Targets.Add(new TargetEntry(candidate));
+            added++;
+        }
+        return added;
+    }
+
+    /// <summary>
+    /// Fallback when no target is configured and no existing ClaudePortable
+    /// folder was found: propose one inside the first available sync client.
+    /// </summary>
     private static string? SuggestDefaultTarget()
     {
         foreach (var c in new SyncClientDiscovery().Discover())
         {
             if (c.IsAvailable && Directory.Exists(c.Path))
             {
-                var proposed = Path.Combine(c.Path, "ClaudePortable");
+                var proposed = Path.Combine(c.Path, DefaultBackupFolderName);
                 Directory.CreateDirectory(proposed);
                 return proposed;
             }
@@ -201,4 +282,12 @@ public sealed record BackupEntry(
     string FileName,
     string FullPath,
     long SizeBytes,
-    BackupManifest? Manifest);
+    BackupManifest? Manifest,
+    bool IsCloudOnly)
+{
+    public string StatusLabel => IsCloudOnly
+        ? "Cloud-only"
+        : Manifest is null
+            ? "Unreadable"
+            : "Synced";
+}
