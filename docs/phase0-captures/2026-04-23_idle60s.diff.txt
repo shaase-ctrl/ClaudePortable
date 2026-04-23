@@ -1,0 +1,57 @@
+﻿# Claude path diff: scenario=idle60s duration=60s autoLaunch=False
+# Before: 49244 files. After: 49244 files.
+# Added: 2. Modified: 44. Removed: 2.
+
+## ADDED (2)
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\IndexedDB\https_claude.ai_0.indexeddb.blob\1\85\8534
+C:\Users\Sascha Haase\AppData\Roaming\Claude\IndexedDB\https_claude.ai_0.indexeddb.blob\1\85\8534
+
+## MODIFIED (44)
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\Cache\No_Vary_Search\journal.baj
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\DIPS-wal
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\IndexedDB\https_claude.ai_0.indexeddb.leveldb\000102.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\Local Storage\leveldb\014999.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\Local Storage\leveldb\LOG
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\logs\claude.ai-web.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\logs\cowork_vm_node.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\logs\main.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\logs\mcp.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\logs\mcp-server-Filesystem.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\logs\mcp-server-Massive Market Data.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\logs\mcp-server-pdf-viewer.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\logs\ssh.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\Network\Cookies
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\Network\Cookies-journal
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\Partitions\cowork-file-preview\Cache\No_Vary_Search\journal.baj
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\Partitions\cowork-file-preview\Local Storage\leveldb\000003.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\Partitions\cowork-file-preview\Local Storage\leveldb\LOG
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\sentry\scope_v3.json
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\sentry\session.json
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\Session Storage\000136.log
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\Session Storage\LOG
+C:\Users\Sascha Haase\AppData\Roaming\Claude\Cache\No_Vary_Search\journal.baj
+C:\Users\Sascha Haase\AppData\Roaming\Claude\DIPS-wal
+C:\Users\Sascha Haase\AppData\Roaming\Claude\IndexedDB\https_claude.ai_0.indexeddb.leveldb\000102.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\Local Storage\leveldb\014999.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\Local Storage\leveldb\LOG
+C:\Users\Sascha Haase\AppData\Roaming\Claude\logs\claude.ai-web.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\logs\cowork_vm_node.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\logs\main.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\logs\mcp.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\logs\mcp-server-Filesystem.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\logs\mcp-server-Massive Market Data.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\logs\mcp-server-pdf-viewer.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\logs\ssh.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\Network\Cookies
+C:\Users\Sascha Haase\AppData\Roaming\Claude\Network\Cookies-journal
+C:\Users\Sascha Haase\AppData\Roaming\Claude\Partitions\cowork-file-preview\Cache\No_Vary_Search\journal.baj
+C:\Users\Sascha Haase\AppData\Roaming\Claude\Partitions\cowork-file-preview\Local Storage\leveldb\000003.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\Partitions\cowork-file-preview\Local Storage\leveldb\LOG
+C:\Users\Sascha Haase\AppData\Roaming\Claude\sentry\scope_v3.json
+C:\Users\Sascha Haase\AppData\Roaming\Claude\sentry\session.json
+C:\Users\Sascha Haase\AppData\Roaming\Claude\Session Storage\000136.log
+C:\Users\Sascha Haase\AppData\Roaming\Claude\Session Storage\LOG
+
+## REMOVED (2)
+C:\Users\Sascha Haase\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\IndexedDB\https_claude.ai_0.indexeddb.blob\1\85\8531
+C:\Users\Sascha Haase\AppData\Roaming\Claude\IndexedDB\https_claude.ai_0.indexeddb.blob\1\85\8531

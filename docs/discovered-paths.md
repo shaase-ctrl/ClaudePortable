@@ -2,7 +2,7 @@
 
 Tracks which Claude artifact paths have been verified on a real install vs which are still assumptions.
 
-**Last updated:** 2026-04-23 (Session 5: MCP config located, Store-app install confirmed)
+**Last updated:** 2026-04-23 (Session 6: idle-capture confirms Store-app reparse-point redirection)
 
 **Verification method:** directory listing + content inspection on the dev machine. ProcMon-based verification of write-path dynamics is tracked in `docs/phase0-procmon.md` and issue #4.
 
@@ -46,7 +46,7 @@ These files are deliberately **not** backed up because they hold credentials or 
 |---|---|
 | `**/Cache/**`, `**/GPUCache/**`, `**/DawnGraphiteCache/**`, `**/DawnWebGPUCache/**`, `**/Code Cache/**`, `**/Extensions Update Cache/**` | Regenerable Electron/Chromium caches. |
 | `**/Crashpad/**`, `**/VideoDecodeStats/**`, `**/Partitions/**`, `**/Network/**` | Electron subsystems. |
-| `**/*.ldb.tmp`, `**/*-journal` | LevelDB/SQLite transient files. |
+| `**/*.ldb.tmp`, `**/*-journal`, `**/*-wal` | LevelDB/SQLite transient files; `-wal` added 2026-04-23 after observing `DIPS-wal` churn. |
 | `**/LOCK` | LevelDB lock file - cannot be read while the owning process is alive. |
 | `**/debug/latest` | Reparse-point / symlink to the most recent debug log; unreadable without elevation. |
 
@@ -54,7 +54,14 @@ These files are deliberately **not** backed up because they hold credentials or 
 
 `Get-AppxPackage -Name Claude | Select-Object -ExpandProperty Version` returns the installed version (e.g. `1.3883.0.0`). The `BackupEngine` calls this and stores the result in `manifest.claudeDesktopVersion`. On restore, `VersionGating.Evaluate(...)` emits an Info/Warn/Block result based on semantic-version comparison (issue #6).
 
+## Dynamic captures (session 6, 2026-04-23)
+
+Ran `scripts/claude-path-diff.ps1 -Scenario idle60s -Duration 60` while Claude Desktop was running (two `claude.exe` processes). Raw report: `docs/phase0-captures/2026-04-23_idle60s.diff.txt`. Summary in `docs/phase0-captures/README.md`. Key facts:
+
+- **Reparse-point redirection**: `%APPDATA%\Claude` is a reparse point whose `Target` is `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude`. The two paths share files; backing up `%APPDATA%\Claude` already covers the Packages path. `WindowsPathDiscovery` was not changed.
+- **Only transient files move during idle**: 44 modified files, all log / LevelDB journal / Chromium cache / sentry state. Added `**/*-wal` exclusion with test coverage (`DIPS-wal`, `*-wal` endings). No credential-bearing files appeared.
+- **Residual scenarios** (new chat, MCP install, connector OAuth, MCP call): still require interactive user flow. Run `pwsh scripts/claude-path-diff.ps1 -Scenario <name>` between the two actions and drop the diff in `docs/phase0-captures/`. No code change is pending on these.
+
 ## Still pending
 
-- **ProcMon dynamic capture** (issue #4): observe what Claude Desktop actually writes during cold start, new chat, extension install, connector auth, and MCP-call flows. Playbook in `docs/phase0-procmon.md`.
 - **Win32 Claude Desktop installs** (as opposed to the Microsoft Store variant confirmed above): if Anthropic ever ships a non-Store MSI, re-run this inventory on that install and add a second column to this table.

@@ -16,6 +16,7 @@ public static class DefaultExclusions
         "**/Network/**",
         "**/*.ldb.tmp",
         "**/*-journal",
+        "**/*-wal",
         "**/tokens.dat",
         "**/Login Data*",
         "**/Cookies*",

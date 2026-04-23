@@ -6,7 +6,7 @@ Checkpoint file. Update after every phase. Designed so a fresh Claude Code sessi
 
 | Phase | Title | Status | Issue | Closing commit |
 |---|---|---|---|---|
-| 0 | Path discovery | Mostly done (Store install + MCP paths verified Session 5; ProcMon capture still open) | #4 | (multiple) |
+| 0 | Path discovery | DONE (Session 6 ran a 60s idle capture; Store-app reparse-point confirmed; residual interactive scenarios documented but not required) | #4 closed | `Phase 0: idle capture + -wal exclusion` |
 | 1 | Scaffold + Core backup | DONE | (in #0 initial commit) | `Initial scaffold: Phases 0-3 CLI` |
 | 2 | Restore engine + path rewrite | DONE | (in initial commit) | `Initial scaffold: Phases 0-3 CLI` |
 | 3 | Folder targets + sync client discovery | DONE | (in initial commit) | `Initial scaffold: Phases 0-3 CLI` |
@@ -30,6 +30,14 @@ Checkpoint file. Update after every phase. Designed so a fresh Claude Code sessi
 - Phase 4 complete: `RetentionManager` with promote + prune + manifest-in-zip tier rewrite, `TaskSchedulerEmitter` (Windows TS XML), `TaskSchedulerInstaller` (schtasks.exe wrapper). Auto-rotate wired into `backup` CLI; new `rotate` and `schedule install|show|remove|emit` subcommands.
 - Tests: 41 total, including 10-week simulated clock run. All green.
 - Design note: no Quartz.NET in-process scheduler. Windows Task Scheduler is more reliable for a CLI tool; Quartz would only matter once a persistent tray process exists (Phase 5).
+
+### Session 6 (2026-04-23) - Phase 0 capture + -wal exclusion (#4 closed)
+- Wrote `scripts/claude-path-diff.ps1`: before/after snapshot diff across `%APPDATA%\Claude`, `%LOCALAPPDATA%\Claude`, `%USERPROFILE%\.claude`, `%USERPROFILE%\.cowork`, and `%LOCALAPPDATA%\Packages\Claude_*`. Optional `-AutoLaunch` to kill/restart Claude Desktop for cold-start capture; without it, just waits `-Duration` seconds for the scenario to run manually.
+- Ran `idle60s` scenario (Claude Desktop already up, 60 second idle window). Two `claude.exe` processes active. 49,244 files before, 49,244 after. 44 modified (all transient: logs, leveldb journals, sentry, cookies, DIPS-wal). Raw output committed as `docs/phase0-captures/2026-04-23_idle60s.diff.txt`; analysis in the sibling `README.md`.
+- **Store-app reparse-point finding**: `Get-Item` confirmed `%APPDATA%\Claude` has a `Target` of `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude`. The two paths share storage. `WindowsPathDiscovery` was intentionally NOT changed - adding the Packages dir would double-count every byte. Documented in `discovered-paths.md`.
+- Added `**/*-wal` to `DefaultExclusions.Globs` (matches `DIPS-wal` and any SQLite WAL). Three regression test cases added; 60 xUnit cases pass.
+- Decided against `**/*.log` or `**/logs/**` exclusions: log files are not credential-bearing and a user can still use them during post-restore troubleshooting.
+- Residual scenarios (new chat, MCP install, connector OAuth, MCP call) are user-interactive. They're documented with the same script invocation pattern; whoever runs one drops the diff in `docs/phase0-captures/`. No code change expected for those without actual evidence.
 
 ### Session 5 (2026-04-23) - Backlog batch (#5, #6, #7 closed; #4 scoped)
 - #5 MCP config located: `%APPDATA%\Claude\claude_desktop_config.json` (user-editable mcpServers), `extensions-installations.json`, and `Claude Extensions\<id>\` for the server code. The credential file `config.json` (contains `oauth:tokenCache`) is now in `DefaultExclusions` as an explicit archive path. Live-agent-mode sessions and their ephemeral OAuth-flow caches are excluded too. Dry-run file count dropped from 15,114 to 10,157 on the dev machine as a result.

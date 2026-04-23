@@ -28,6 +28,9 @@ public class ExclusionGlobTests
     [InlineData("claude-desktop/appdata/local-agent-mode-sessions/abc/def/.claude/mcp-needs-auth-cache.json", true)]
     [InlineData("claude-code/dotclaude/mcp-needs-auth-cache.json", true)]
     [InlineData("claude-desktop/appdata/Claude Extensions/pdf-server/dist/index.js", false)]
+    [InlineData("claude-desktop/appdata/DIPS-wal", true)]
+    [InlineData("claude-desktop/appdata/IndexedDB/foo-wal", true)]
+    [InlineData("claude-desktop/appdata/not-a-wal-but-walrus.json", false)]
     public void IsExcluded_MatchesExpectedPolicy(string path, bool expected)
     {
         Assert.Equal(expected, Defaults.IsExcluded(path));
