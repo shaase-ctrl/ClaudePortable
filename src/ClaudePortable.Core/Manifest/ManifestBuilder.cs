@@ -15,7 +15,8 @@ public static class ManifestBuilder
         DateTimeOffset createdAt,
         long sizeBytes = 0,
         int fileCount = 0,
-        string sha256 = Sha256Placeholder)
+        string sha256 = Sha256Placeholder,
+        string? claudeDesktopVersion = null)
     {
         var toolVersion = Assembly.GetExecutingAssembly()
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
@@ -26,6 +27,7 @@ public static class ManifestBuilder
             CreatedAt = createdAt,
             Hostname = Environment.MachineName,
             WindowsUser = Environment.UserName,
+            ClaudeDesktopVersion = claudeDesktopVersion,
             RetentionTier = tier,
             SourcePaths = paths
                 .Where(p => p.Exists)

@@ -168,6 +168,7 @@ public sealed class MainViewModel : ViewModelBase
             var engine = new RestoreEngine(new PathRewriter());
             var outcome = await engine.RestoreAsync(new RestoreRequest(SelectedBackup.FullPath, Confirmed: true)).ConfigureAwait(true);
             UiLogSink.Instance.Append($"restore complete. safety backups: {outcome.SafetyBackups.Count}");
+            UiLogSink.Instance.Append($"version gate: {outcome.VersionGate.Level} - {outcome.VersionGate.Message}");
             Status = $"Restore complete. Checklist: {outcome.PostRestoreChecklistPath}";
         }
         catch (Exception ex)

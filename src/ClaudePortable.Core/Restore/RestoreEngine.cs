@@ -1,9 +1,12 @@
 using System.IO.Compression;
+using System.Runtime.Versioning;
 using ClaudePortable.Core.Abstractions;
+using ClaudePortable.Core.Discovery;
 using ClaudePortable.Core.Manifest;
 
 namespace ClaudePortable.Core.Restore;
 
+[SupportedOSPlatform("windows")]
 public sealed class RestoreEngine : IRestoreEngine
 {
     private static readonly (string ArchivePrefix, string EnvRelative)[] RestoreMap =
@@ -52,6 +55,13 @@ public sealed class RestoreEngine : IRestoreEngine
 
             var manifest = ManifestBuilder.Deserialize(await File.ReadAllTextAsync(manifestPath, cancellationToken).ConfigureAwait(false));
 
+            var installedVersion = ClaudeDesktopVersionReader.TryRead();
+            var gate = VersionGating.Evaluate(manifest.ClaudeDesktopVersion, installedVersion);
+            if (gate.Level == VersionGateLevel.Block && !request.IgnoreVersionMismatch)
+            {
+                throw new InvalidOperationException(gate.Message);
+            }
+
             var newUserProfile = request.TargetUserProfile
                 ?? Environment.ExpandEnvironmentVariables("%USERPROFILE%");
             var oldUserProfile = manifest.SourcePaths.TryGetValue("claudeCodeUserProfile", out var oldCodePath)
@@ -96,7 +106,7 @@ public sealed class RestoreEngine : IRestoreEngine
                 File.Copy(checklistSource, checklistDest, overwrite: true);
             }
 
-            return new RestoreOutcome(manifest, safetyBackups, checklistDest);
+            return new RestoreOutcome(manifest, safetyBackups, checklistDest, gate);
         }
         finally
         {

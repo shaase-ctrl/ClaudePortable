@@ -21,6 +21,13 @@ public class ExclusionGlobTests
     [InlineData("claude-code/dotclaude/CLAUDE.md", false)]
     [InlineData("claude-desktop/appdata/IndexedDB/data.leveldb/MANIFEST-000001", false)]
     [InlineData("claude-desktop/appdata/Preferences", false)]
+    [InlineData("claude-desktop/appdata/config.json", true)]
+    [InlineData("claude-desktop/appdata/claude_desktop_config.json", false)]
+    [InlineData("claude-desktop/appdata/extensions-installations.json", false)]
+    [InlineData("claude-desktop/appdata/local-agent-mode-sessions/abc/def/.claude/settings.json", true)]
+    [InlineData("claude-desktop/appdata/local-agent-mode-sessions/abc/def/.claude/mcp-needs-auth-cache.json", true)]
+    [InlineData("claude-code/dotclaude/mcp-needs-auth-cache.json", true)]
+    [InlineData("claude-desktop/appdata/Claude Extensions/pdf-server/dist/index.js", false)]
     public void IsExcluded_MatchesExpectedPolicy(string path, bool expected)
     {
         Assert.Equal(expected, Defaults.IsExcluded(path));

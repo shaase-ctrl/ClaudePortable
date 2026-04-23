@@ -1,10 +1,13 @@
+using System.Runtime.Versioning;
 using ClaudePortable.Core.Abstractions;
 using ClaudePortable.Core.Archive;
+using ClaudePortable.Core.Discovery;
 using ClaudePortable.Core.Manifest;
 using ClaudePortable.Core.Post;
 
 namespace ClaudePortable.Core.Backup;
 
+[SupportedOSPlatform("windows")]
 public sealed class BackupEngine : IBackupEngine
 {
     private readonly IPathDiscovery _pathDiscovery;
@@ -51,7 +54,8 @@ public sealed class BackupEngine : IBackupEngine
             discovered,
             DefaultExclusions.Globs,
             request.Tier,
-            createdAt);
+            createdAt,
+            claudeDesktopVersion: ClaudeDesktopVersionReader.TryRead());
 
         if (request.DryRun)
         {

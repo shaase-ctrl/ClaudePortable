@@ -22,5 +22,8 @@ public static class DefaultExclusions
         "**/.remote-plugins/**",
         "**/LOCK",
         "**/debug/latest",
+        "claude-desktop/appdata/config.json",
+        "**/local-agent-mode-sessions/**",
+        "**/mcp-needs-auth-cache.json",
     };
 }
