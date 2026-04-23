@@ -20,6 +20,8 @@ public sealed class MainViewModel : ViewModelBase
 
     private readonly TargetStore _store = new();
     private string _status = "Ready.";
+    private string _targetUserProfileOverride = string.Empty;
+    private bool _ignoreVersionMismatch;
 
     public ObservableCollection<TargetEntry> Targets { get; } = new();
     public ObservableCollection<BackupEntry> Backups { get; } = new();
@@ -35,12 +37,31 @@ public sealed class MainViewModel : ViewModelBase
         set => SetField(ref _status, value);
     }
 
+    /// <summary>
+    /// Optional override for the restore destination root. When set, the
+    /// RestoreEngine routes %USERPROFILE%, %APPDATA%, and %LOCALAPPDATA%
+    /// under this path instead of the current user's home. Leave empty to
+    /// use the process's %USERPROFILE%.
+    /// </summary>
+    public string TargetUserProfileOverride
+    {
+        get => _targetUserProfileOverride;
+        set => SetField(ref _targetUserProfileOverride, value);
+    }
+
+    public bool IgnoreVersionMismatch
+    {
+        get => _ignoreVersionMismatch;
+        set => SetField(ref _ignoreVersionMismatch, value);
+    }
+
     public AsyncRelayCommand BackupNowCommand { get; }
     public AsyncRelayCommand RefreshCommand { get; }
     public RelayCommand AddTargetCommand { get; }
     public RelayCommand RemoveTargetCommand { get; }
     public AsyncRelayCommand RestoreCommand { get; }
     public AsyncRelayCommand RestoreFromFileCommand { get; }
+    public RelayCommand PickTargetProfileCommand { get; }
 
     public TargetEntry? SelectedTarget { get; set; }
     public BackupEntry? SelectedBackup { get; set; }
@@ -74,8 +95,22 @@ public sealed class MainViewModel : ViewModelBase
         RemoveTargetCommand = new RelayCommand(RemoveTarget, () => SelectedTarget is not null);
         RestoreCommand = new AsyncRelayCommand(RestoreAsync, () => SelectedBackup is not null);
         RestoreFromFileCommand = new AsyncRelayCommand(RestoreFromFileAsync);
+        PickTargetProfileCommand = new RelayCommand(PickTargetProfile);
 
         _ = RefreshAsync();
+    }
+
+    public void PickTargetProfile()
+    {
+        var dlg = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "Pick the target user profile folder (C:\\Users\\<name>)",
+            InitialDirectory = @"C:\Users",
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            TargetUserProfileOverride = dlg.FolderName;
+        }
     }
 
     public async Task RefreshAsync()
@@ -218,7 +253,18 @@ public sealed class MainViewModel : ViewModelBase
         try
         {
             var engine = new RestoreEngine(new PathRewriter());
-            var outcome = await engine.RestoreAsync(new RestoreRequest(zipPath, Confirmed: true)).ConfigureAwait(true);
+            var targetOverride = string.IsNullOrWhiteSpace(TargetUserProfileOverride) ? null : TargetUserProfileOverride.Trim();
+            if (targetOverride is not null)
+            {
+                UiLogSink.Instance.Append($"using override target user profile: {targetOverride}");
+            }
+            var outcome = await engine.RestoreAsync(
+                new RestoreRequest(
+                    zipPath,
+                    TargetUserProfile: targetOverride,
+                    Confirmed: true,
+                    IgnoreVersionMismatch: IgnoreVersionMismatch))
+                .ConfigureAwait(true);
 
             foreach (var report in outcome.PerTargetReports)
             {

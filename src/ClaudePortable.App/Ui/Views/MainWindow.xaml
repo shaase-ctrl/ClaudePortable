@@ -233,6 +233,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Style="{DynamicResource H1}" Text="Restore" />
@@ -268,6 +269,53 @@
                         <Button Content="Restore from file..."
                                 Command="{Binding RestoreFromFileCommand}" />
                     </StackPanel>
+
+                    <Expander Grid.Row="5" Margin="0,16,0,0"
+                              Foreground="#D6D3C9"
+                              Header="Advanced options"
+                              FontSize="13"
+                              FontWeight="SemiBold">
+                        <Border Style="{DynamicResource Card}" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Style="{DynamicResource Caption}" TextWrapping="Wrap" Margin="0,0,0,12">
+                                    Override where the restore writes files. Use this when the backup was taken
+                                    under a different Windows user name (e.g.
+                                    <Run FontFamily="{DynamicResource MonoFont}">sascha</Run> on the workstation,
+                                    <Run FontFamily="{DynamicResource MonoFont}">sasch</Run> on the laptop). All
+                                    sub-paths (<Run FontFamily="{DynamicResource MonoFont}">AppData\Roaming</Run>,
+                                    <Run FontFamily="{DynamicResource MonoFont}">AppData\Local</Run>,
+                                    <Run FontFamily="{DynamicResource MonoFont}">.claude</Run>,
+                                    <Run FontFamily="{DynamicResource MonoFont}">.cowork</Run>) are derived from
+                                    this root. Leave blank to use
+                                    <Run FontFamily="{DynamicResource MonoFont}">%USERPROFILE%</Run>.
+                                </TextBlock>
+
+                                <TextBlock Text="Target user profile" Margin="0,0,0,4" FontWeight="SemiBold" Foreground="#D6D3C9" />
+                                <DockPanel Margin="0,0,0,12">
+                                    <Button DockPanel.Dock="Right" Content="Browse..."
+                                            Command="{Binding PickTargetProfileCommand}"
+                                            Margin="8,0,0,0" />
+                                    <TextBox Text="{Binding TargetUserProfileOverride, UpdateSourceTrigger=PropertyChanged}"
+                                             Background="#1A1917"
+                                             Foreground="#FFFFFF"
+                                             CaretBrush="#FFFFFF"
+                                             BorderBrush="#4A4944"
+                                             BorderThickness="1"
+                                             Padding="10,6"
+                                             FontFamily="{DynamicResource MonoFont}" />
+                                </DockPanel>
+
+                                <CheckBox IsChecked="{Binding IgnoreVersionMismatch}"
+                                          Foreground="#D6D3C9"
+                                          Margin="0,0,0,8">
+                                    <TextBlock TextWrapping="Wrap">
+                                        Ignore Claude Desktop version mismatch
+                                        <Run Foreground="#B5B2A8" FontSize="12" FontStyle="Italic">(skip the major-version block; chat-history schema may differ)</Run>
+                                    </TextBlock>
+                                </CheckBox>
+                            </StackPanel>
+                        </Border>
+                    </Expander>
                 </Grid>
             </TabItem>
 
