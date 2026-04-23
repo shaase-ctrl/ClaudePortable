@@ -198,12 +198,18 @@ public sealed class MainViewModel : ViewModelBase
     private async Task RunRestoreAsync(string zipPath, string displayName)
     {
         var confirm = System.Windows.MessageBox.Show(
-            $"Restore from:\n{displayName}\n\nExisting Claude data will be moved to <folder>_backup_<timestamp>. Proceed?",
+            $"Restore from:\n{displayName}\n\nExisting Claude data will be moved to <folder>_backup_<timestamp> where possible, or files will be overlaid if the target is a Store-app reparse point. Nothing is deleted.\n\nProceed?",
             "Confirm restore",
             System.Windows.MessageBoxButton.YesNo,
             System.Windows.MessageBoxImage.Warning);
         if (confirm != System.Windows.MessageBoxResult.Yes)
         {
+            return;
+        }
+
+        if (!await EnsureClaudeDesktopClosedAsync().ConfigureAwait(true))
+        {
+            Status = "Restore cancelled - Claude Desktop still running.";
             return;
         }
 
@@ -213,9 +219,24 @@ public sealed class MainViewModel : ViewModelBase
         {
             var engine = new RestoreEngine(new PathRewriter());
             var outcome = await engine.RestoreAsync(new RestoreRequest(zipPath, Confirmed: true)).ConfigureAwait(true);
-            UiLogSink.Instance.Append($"restore complete. safety backups: {outcome.SafetyBackups.Count}");
+
+            foreach (var report in outcome.PerTargetReports)
+            {
+                UiLogSink.Instance.Append(
+                    $"  {report.ArchivePrefix}: {report.FilesWritten} files -> {report.TargetFolder} " +
+                    $"(safety-backup: {(report.SafetyBackedUp ? report.SafetyBackupPath : "overlay / skipped")})");
+                foreach (var warning in report.Warnings)
+                {
+                    UiLogSink.Instance.Append($"    warning: {warning}");
+                }
+            }
+
+            var totalWarnings = outcome.PerTargetReports.Sum(r => r.Warnings.Count);
+            UiLogSink.Instance.Append($"restore complete. safety backups: {outcome.SafetyBackups.Count}, warnings: {totalWarnings}");
             UiLogSink.Instance.Append($"version gate: {outcome.VersionGate.Level} - {outcome.VersionGate.Message}");
-            Status = $"Restore complete. Checklist: {outcome.PostRestoreChecklistPath}";
+            Status = totalWarnings == 0
+                ? $"Restore complete. Checklist: {outcome.PostRestoreChecklistPath}"
+                : $"Restore complete with {totalWarnings} warning(s). See Logs tab.";
         }
         catch (Exception ex)
         {
@@ -223,6 +244,45 @@ public sealed class MainViewModel : ViewModelBase
             Status = $"Restore failed: {ex.Message}";
         }
         await RefreshAsync().ConfigureAwait(true);
+    }
+
+    private static async Task<bool> EnsureClaudeDesktopClosedAsync()
+    {
+        var running = System.Diagnostics.Process.GetProcessesByName("Claude");
+        if (running.Length == 0)
+        {
+            return true;
+        }
+
+        var result = System.Windows.MessageBox.Show(
+            $"Claude Desktop is running (PID {string.Join(", ", running.Select(p => p.Id))}). " +
+            "Its open file handles will cause 'Access denied' errors during restore.\n\n" +
+            "Close Claude Desktop now? (Yes = close for me, No = cancel restore)",
+            "Close Claude Desktop?",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+        if (result != System.Windows.MessageBoxResult.Yes)
+        {
+            return false;
+        }
+
+        foreach (var p in running)
+        {
+            try
+            {
+                p.CloseMainWindow();
+                if (!p.WaitForExit(5000))
+                {
+                    p.Kill(entireProcessTree: true);
+                }
+            }
+            catch (InvalidOperationException) { }
+            catch (System.ComponentModel.Win32Exception) { }
+        }
+
+        // Give Windows a beat to release handles + flush pending writes.
+        await Task.Delay(1500).ConfigureAwait(true);
+        return System.Diagnostics.Process.GetProcessesByName("Claude").Length == 0;
     }
 
     /// <summary>

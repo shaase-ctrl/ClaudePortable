@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.Versioning;
 using ClaudePortable.Core.Abstractions;
@@ -39,6 +40,13 @@ public sealed class RestoreEngine : IRestoreEngine
                 "Restore requires explicit confirmation. Pass --yes on the CLI or set Confirmed=true.");
         }
 
+        var running = GetRunningClaudeProcesses();
+        if (running.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Claude Desktop is running (PID {string.Join(", ", running)}). Close it before restoring; its open file handles will cause 'Access denied' errors on %LOCALAPPDATA%\\Claude and %APPDATA%\\Claude.");
+        }
+
         var tempRoot = Path.Combine(Path.GetTempPath(), "ClaudePortable", $"restore-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempRoot);
 
@@ -72,6 +80,8 @@ public sealed class RestoreEngine : IRestoreEngine
 
             var now = _clock.GetUtcNow();
             var safetyBackups = new List<string>();
+            var perTargetReports = new List<RestoreTargetReport>();
+
             foreach (var (archivePrefix, envRelative) in RestoreMap)
             {
                 var sourceDir = Path.Combine(tempRoot, archivePrefix.Replace('/', Path.DirectorySeparatorChar));
@@ -86,13 +96,28 @@ public sealed class RestoreEngine : IRestoreEngine
                     targetDir = RewriteEnvPath(envRelative, request.TargetUserProfile);
                 }
 
-                var preserved = SafetyBackup.PreserveExisting(targetDir, now);
-                if (preserved is not null)
+                var warnings = new List<string>();
+
+                var preserved = SafetyBackup.TryPreserveExisting(targetDir, now);
+                if (preserved.Error is not null)
                 {
-                    safetyBackups.Add(preserved);
+                    warnings.Add(preserved.Error);
+                }
+                if (preserved.MovedAside && preserved.BackupPath is not null)
+                {
+                    safetyBackups.Add(preserved.BackupPath);
                 }
 
-                CopyDirectory(sourceDir, targetDir);
+                var (filesWritten, copyErrors) = CopyDirectoryResilient(sourceDir, targetDir);
+                warnings.AddRange(copyErrors);
+
+                perTargetReports.Add(new RestoreTargetReport(
+                    archivePrefix,
+                    targetDir,
+                    preserved.MovedAside,
+                    preserved.BackupPath,
+                    filesWritten,
+                    warnings));
             }
 
             var checklistSource = Path.Combine(tempRoot, "post-restore-checklist.md");
@@ -106,11 +131,23 @@ public sealed class RestoreEngine : IRestoreEngine
                 File.Copy(checklistSource, checklistDest, overwrite: true);
             }
 
-            return new RestoreOutcome(manifest, safetyBackups, checklistDest, gate);
+            return new RestoreOutcome(manifest, safetyBackups, checklistDest, gate, perTargetReports);
         }
         finally
         {
             TryDeleteDirectory(tempRoot);
+        }
+    }
+
+    private static IReadOnlyList<int> GetRunningClaudeProcesses()
+    {
+        try
+        {
+            return Process.GetProcessesByName("Claude").Select(p => p.Id).ToList();
+        }
+        catch (InvalidOperationException)
+        {
+            return Array.Empty<int>();
         }
     }
 
@@ -122,21 +159,56 @@ public sealed class RestoreEngine : IRestoreEngine
             .Replace("%LOCALAPPDATA%", Path.Combine(newUserProfile, "AppData", "Local"), StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void CopyDirectory(string source, string destination)
+    /// <summary>
+    /// Copy source -> destination. Collects per-file copy failures as
+    /// warnings and returns (filesWritten, errors) - does NOT throw on
+    /// a single blocked file (common when a Store-sandbox folder has
+    /// some locked or permission-guarded children).
+    /// </summary>
+    private static (int FilesWritten, IReadOnlyList<string> Errors) CopyDirectoryResilient(string source, string destination)
     {
-        Directory.CreateDirectory(destination);
+        var errors = new List<string>();
+        try
+        {
+            Directory.CreateDirectory(destination);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            errors.Add($"Could not create '{destination}': {ex.Message}");
+            return (0, errors);
+        }
+
         foreach (var dir in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
         {
             var relative = Path.GetRelativePath(source, dir);
-            Directory.CreateDirectory(Path.Combine(destination, relative));
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(destination, relative));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                errors.Add($"Could not create subdir '{relative}': {ex.Message}");
+            }
         }
+
+        var filesWritten = 0;
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
             var relative = Path.GetRelativePath(source, file);
             var target = Path.Combine(destination, relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Copy(file, target, overwrite: true);
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.Copy(file, target, overwrite: true);
+                filesWritten++;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                errors.Add($"Skipped '{relative}': {ex.Message}");
+            }
         }
+
+        return (filesWritten, errors);
     }
 
     private static void TryDeleteDirectory(string path)
