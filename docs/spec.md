@@ -561,7 +561,7 @@ Stand: 2026-04-22 (wird bei jedem Phase-Abschluss aktualisiert)
 
 | Phase | Status | Issue |
 |---|---|---|
-| 0 Discovery | Partially done (ASSUMED-Rows bis ProcMon-Output) | shaase-ctrl/ClaudePortable#4 |
+| 0 Discovery | Weitgehend komplett (Store-Install + MCP-Pfade in Session 5 verifiziert; ProcMon-Capture offen) | shaase-ctrl/ClaudePortable#4 |
 | 1 Backup-Core | DONE (initial commit) | - |
 | 2 Restore + Path-Rewrite | DONE (initial commit) | - |
 | 3 Folder-Targets + Sync-Discovery | DONE (initial commit) | - |

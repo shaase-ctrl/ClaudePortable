@@ -6,7 +6,7 @@ Checkpoint file. Update after every phase. Designed so a fresh Claude Code sessi
 
 | Phase | Title | Status | Issue | Closing commit |
 |---|---|---|---|---|
-| 0 | Path discovery | Partially done (ASSUMED rows remain until ProcMon) | #4 | (Phase 1 commit) |
+| 0 | Path discovery | Mostly done (Store install + MCP paths verified Session 5; ProcMon capture still open) | #4 | (multiple) |
 | 1 | Scaffold + Core backup | DONE | (in #0 initial commit) | `Initial scaffold: Phases 0-3 CLI` |
 | 2 | Restore engine + path rewrite | DONE | (in initial commit) | `Initial scaffold: Phases 0-3 CLI` |
 | 3 | Folder targets + sync client discovery | DONE | (in initial commit) | `Initial scaffold: Phases 0-3 CLI` |
@@ -30,6 +30,14 @@ Checkpoint file. Update after every phase. Designed so a fresh Claude Code sessi
 - Phase 4 complete: `RetentionManager` with promote + prune + manifest-in-zip tier rewrite, `TaskSchedulerEmitter` (Windows TS XML), `TaskSchedulerInstaller` (schtasks.exe wrapper). Auto-rotate wired into `backup` CLI; new `rotate` and `schedule install|show|remove|emit` subcommands.
 - Tests: 41 total, including 10-week simulated clock run. All green.
 - Design note: no Quartz.NET in-process scheduler. Windows Task Scheduler is more reliable for a CLI tool; Quartz would only matter once a persistent tray process exists (Phase 5).
+
+### Session 5 (2026-04-23) - Backlog batch (#5, #6, #7 closed; #4 scoped)
+- #5 MCP config located: `%APPDATA%\Claude\claude_desktop_config.json` (user-editable mcpServers), `extensions-installations.json`, and `Claude Extensions\<id>\` for the server code. The credential file `config.json` (contains `oauth:tokenCache`) is now in `DefaultExclusions` as an explicit archive path. Live-agent-mode sessions and their ephemeral OAuth-flow caches are excluded too. Dry-run file count dropped from 15,114 to 10,157 on the dev machine as a result.
+- #6 Claude Desktop is installed via Microsoft Store on the dev machine (`Get-AppxPackage -Name Claude` returns `1.3883.0.0`). `ClaudeDesktopVersionReader.TryRead()` shells out to `powershell.exe` to pick it up. `BackupEngine` plumbs it into `manifest.claudeDesktopVersion`. `VersionGating.Evaluate(backup, installed)` returns Info/Ok/Warn/Block; `RestoreEngine` throws on Block unless `--ignore-version-mismatch` is set. Surfaced in the GUI log tab and the CLI `restore` output.
+- #7 Full two-VM OneDrive roundtrip playbook in `docs/e2e-test.md` - pre-reqs, step-by-step on VM-A and VM-B, pass criteria, troubleshooting matrix.
+- #4 Phase 0 ProcMon playbook in `docs/phase0-procmon.md` - five exact capture scenarios, post-processing one-liner. Issue stays open since the actual run is interactive and user-driven.
+- `docs/discovered-paths.md` rewritten around the verified Store install, with security-critical exclusions and operational noise exclusions listed separately.
+- Tests: +9 cases (VersionGating + new exclusion globs). 57 total now passing. CI green.
 
 ### Session 4 (2026-04-23) - Phase 6
 - Installed `wix` as a .NET global tool (v7.0.0); accepted the OSMF EULA (`wix eula accept wix7`); added the `WixToolset.UI.wixext` extension.
