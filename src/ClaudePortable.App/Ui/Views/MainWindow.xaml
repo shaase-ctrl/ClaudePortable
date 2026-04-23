@@ -34,7 +34,7 @@
                         <TextBlock Text="ClaudePortable" Margin="10,0,0,0" FontSize="15" FontWeight="SemiBold"
                                    VerticalAlignment="Center" />
                     </StackPanel>
-                    <TextBlock Style="{DynamicResource SidebarVersion}" Text="v0.1.0 · alpha" />
+                    <TextBlock Style="{DynamicResource SidebarVersion}" Text="{Binding AppVersionLabel}" />
                 </StackPanel>
 
                 <!-- Nav -->

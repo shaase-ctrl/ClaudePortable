@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Reflection;
 using System.Runtime.Versioning;
 using ClaudePortable.App.Ui.Services;
 using ClaudePortable.Core.Abstractions;
@@ -30,6 +31,20 @@ public sealed class MainViewModel : ViewModelBase
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "Instance binding target for XAML.")]
     public ObservableCollection<string> LogEntries => UiLogSink.Instance.Entries;
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "Instance binding target for XAML.")]
+    public string AppVersionLabel
+    {
+        get
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            var info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            var version = string.IsNullOrWhiteSpace(info)
+                ? asm.GetName().Version?.ToString(3) ?? "0.0.0"
+                : info!.Split('+')[0];
+            return $"v{version} · alpha";
+        }
+    }
 
     public string Status
     {
@@ -266,11 +281,25 @@ public sealed class MainViewModel : ViewModelBase
                     IgnoreVersionMismatch: IgnoreVersionMismatch))
                 .ConfigureAwait(true);
 
+            // Dump what the backup claims to contain so the user sees whether
+            // appdata / localappdata / dotclaude / cowork were captured by the
+            // source machine's backup engine - this is the "why was nothing
+            // restored" diagnostic.
+            UiLogSink.Instance.Append(
+                $"manifest: host={outcome.Manifest.Hostname}, files={outcome.Manifest.FileCount}, " +
+                $"sizeBytes={outcome.Manifest.SizeBytes:N0}, sha256={outcome.Manifest.Sha256[..Math.Min(12, outcome.Manifest.Sha256.Length)]}...");
+            foreach (var (key, path) in outcome.Manifest.SourcePaths)
+            {
+                UiLogSink.Instance.Append($"  captured {key} <- {path}");
+            }
+
             foreach (var report in outcome.PerTargetReports)
             {
+                var status = report.FilesWritten == 0 && report.Warnings.Count == 1 && report.Warnings[0].StartsWith("Not present", StringComparison.Ordinal)
+                    ? "skipped"
+                    : report.SafetyBackedUp ? $"safety-backup: {report.SafetyBackupPath}" : "overlay";
                 UiLogSink.Instance.Append(
-                    $"  {report.ArchivePrefix}: {report.FilesWritten} files -> {report.TargetFolder} " +
-                    $"(safety-backup: {(report.SafetyBackedUp ? report.SafetyBackupPath : "overlay / skipped")})");
+                    $"  {report.ArchivePrefix}: {report.FilesWritten} files -> {report.TargetFolder} ({status})");
                 foreach (var warning in report.Warnings)
                 {
                     UiLogSink.Instance.Append($"    warning: {warning}");

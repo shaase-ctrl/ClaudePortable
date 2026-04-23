@@ -10,6 +10,8 @@ namespace ClaudePortable.Core.Restore;
 [SupportedOSPlatform("windows")]
 public sealed class RestoreEngine : IRestoreEngine
 {
+    private static readonly string[] NotInBackupWarning = ["Not present in backup — nothing to restore for this target."];
+
     private static readonly (string ArchivePrefix, string EnvRelative)[] RestoreMap =
     [
         ("claude-desktop/appdata", @"%APPDATA%\Claude"),
@@ -85,15 +87,24 @@ public sealed class RestoreEngine : IRestoreEngine
             foreach (var (archivePrefix, envRelative) in RestoreMap)
             {
                 var sourceDir = Path.Combine(tempRoot, archivePrefix.Replace('/', Path.DirectorySeparatorChar));
-                if (!Directory.Exists(sourceDir))
-                {
-                    continue;
-                }
-
                 var targetDir = Environment.ExpandEnvironmentVariables(envRelative);
                 if (request.TargetUserProfile is not null)
                 {
                     targetDir = RewriteEnvPath(envRelative, request.TargetUserProfile);
+                }
+
+                if (!Directory.Exists(sourceDir))
+                {
+                    // Record an explicit "not present" entry so the caller can
+                    // see which archive prefixes were or weren't in the ZIP.
+                    perTargetReports.Add(new RestoreTargetReport(
+                        archivePrefix,
+                        targetDir,
+                        SafetyBackedUp: false,
+                        SafetyBackupPath: null,
+                        FilesWritten: 0,
+                        Warnings: NotInBackupWarning));
+                    continue;
                 }
 
                 var warnings = new List<string>();
