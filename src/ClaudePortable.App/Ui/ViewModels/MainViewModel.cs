@@ -23,6 +23,10 @@ public sealed class MainViewModel : ViewModelBase
     private string _status = "Ready.";
     private string _targetUserProfileOverride = string.Empty;
     private bool _ignoreVersionMismatch;
+    private bool _isBusy;
+    private string _progressMessage = string.Empty;
+    private double _progressValue;
+    private bool _progressIsIndeterminate = true;
 
     public ObservableCollection<TargetEntry> Targets { get; } = new();
     public ObservableCollection<BackupEntry> Backups { get; } = new();
@@ -68,6 +72,38 @@ public sealed class MainViewModel : ViewModelBase
     {
         get => _ignoreVersionMismatch;
         set => SetField(ref _ignoreVersionMismatch, value);
+    }
+
+    public bool IsBusy
+    {
+        get => _isBusy;
+        set
+        {
+            if (SetField(ref _isBusy, value))
+            {
+                Raise(nameof(IsNotBusy));
+            }
+        }
+    }
+
+    public bool IsNotBusy => !IsBusy;
+
+    public string ProgressMessage
+    {
+        get => _progressMessage;
+        set => SetField(ref _progressMessage, value);
+    }
+
+    public double ProgressValue
+    {
+        get => _progressValue;
+        set => SetField(ref _progressValue, value);
+    }
+
+    public bool ProgressIsIndeterminate
+    {
+        get => _progressIsIndeterminate;
+        set => SetField(ref _progressIsIndeterminate, value);
     }
 
     public AsyncRelayCommand BackupNowCommand { get; }
@@ -162,10 +198,19 @@ public sealed class MainViewModel : ViewModelBase
         var target = Targets.First();
         UiLogSink.Instance.Append($"backup starting -> {target.Path}");
         Status = "Backing up...";
+        BeginBusy("Starting backup");
+        var progress = CreateProgress();
         try
         {
-            var engine = new BackupEngine(new WindowsPathDiscovery(), new ZipArchiveWriter());
-            var outcome = await engine.CreateBackupAsync(new BackupRequest(target.Path, RetentionTier.Daily)).ConfigureAwait(true);
+            var outcome = await Task.Run(async () =>
+            {
+                var engine = new BackupEngine(new WindowsPathDiscovery(), new ZipArchiveWriter());
+                return await engine.CreateBackupAsync(
+                        new BackupRequest(target.Path, RetentionTier.Daily),
+                        progress)
+                    .ConfigureAwait(false);
+            }).ConfigureAwait(true);
+
             UiLogSink.Instance.Append($"backup done: {Path.GetFileName(outcome.ZipPath)} ({outcome.Manifest.FileCount} files, {outcome.Manifest.SizeBytes:N0} bytes)");
             foreach (var (key, count) in outcome.FilesPerSource)
             {
@@ -175,8 +220,10 @@ public sealed class MainViewModel : ViewModelBase
             {
                 UiLogSink.Instance.Append($"  skipped (not present on this machine): {skipped.Key} <- {skipped.Path}");
             }
-            var manager = new RetentionManager();
-            var report = manager.Rotate(new FolderTarget(target.Path));
+
+            ProgressMessage = "Rotating retention...";
+            ProgressIsIndeterminate = true;
+            var report = await Task.Run(() => new RetentionManager().Rotate(new FolderTarget(target.Path))).ConfigureAwait(true);
             UiLogSink.Instance.Append($"rotation: promoted={report.Promoted.Count} pruned={report.Pruned.Count}");
             Status = "Backup complete.";
         }
@@ -184,6 +231,10 @@ public sealed class MainViewModel : ViewModelBase
         {
             UiLogSink.Instance.Append($"backup failed: {ex.Message}");
             Status = $"Backup failed: {ex.Message}";
+        }
+        finally
+        {
+            EndBusy();
         }
         await RefreshAsync().ConfigureAwait(true);
     }
@@ -273,21 +324,27 @@ public sealed class MainViewModel : ViewModelBase
 
         Status = "Restoring...";
         UiLogSink.Instance.Append($"restore starting: {displayName}");
+        BeginBusy("Starting restore");
+        var progress = CreateProgress();
         try
         {
-            var engine = new RestoreEngine(new PathRewriter());
             var targetOverride = string.IsNullOrWhiteSpace(TargetUserProfileOverride) ? null : TargetUserProfileOverride.Trim();
             if (targetOverride is not null)
             {
                 UiLogSink.Instance.Append($"using override target user profile: {targetOverride}");
             }
-            var outcome = await engine.RestoreAsync(
-                new RestoreRequest(
-                    zipPath,
-                    TargetUserProfile: targetOverride,
-                    Confirmed: true,
-                    IgnoreVersionMismatch: IgnoreVersionMismatch))
-                .ConfigureAwait(true);
+            var outcome = await Task.Run(async () =>
+            {
+                var engine = new RestoreEngine(new PathRewriter());
+                return await engine.RestoreAsync(
+                        new RestoreRequest(
+                            zipPath,
+                            TargetUserProfile: targetOverride,
+                            Confirmed: true,
+                            IgnoreVersionMismatch: IgnoreVersionMismatch),
+                        progress)
+                    .ConfigureAwait(false);
+            }).ConfigureAwait(true);
 
             // Dump what the backup claims to contain so the user sees whether
             // appdata / localappdata / dotclaude / cowork were captured by the
@@ -326,7 +383,47 @@ public sealed class MainViewModel : ViewModelBase
             UiLogSink.Instance.Append($"restore failed: {ex.Message}");
             Status = $"Restore failed: {ex.Message}";
         }
+        finally
+        {
+            EndBusy();
+        }
         await RefreshAsync().ConfigureAwait(true);
+    }
+
+    private void BeginBusy(string initialMessage)
+    {
+        IsBusy = true;
+        ProgressIsIndeterminate = true;
+        ProgressValue = 0;
+        ProgressMessage = initialMessage;
+    }
+
+    private void EndBusy()
+    {
+        IsBusy = false;
+        ProgressIsIndeterminate = false;
+        ProgressValue = 0;
+        ProgressMessage = string.Empty;
+    }
+
+    private Progress<OperationProgress> CreateProgress()
+    {
+        // Progress<T> captures the current SynchronizationContext so the
+        // callback is marshalled back to the UI thread.
+        return new Progress<OperationProgress>(p =>
+        {
+            if (p.Fraction is { } f)
+            {
+                ProgressIsIndeterminate = false;
+                ProgressValue = f;
+                ProgressMessage = $"{p.Phase} ({p.Current} / {p.Total}, {f * 100:F0}%)";
+            }
+            else
+            {
+                ProgressIsIndeterminate = true;
+                ProgressMessage = p.Phase;
+            }
+        });
     }
 
     private static async Task<bool> EnsureClaudeDesktopClosedAsync()

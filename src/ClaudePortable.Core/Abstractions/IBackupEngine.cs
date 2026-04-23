@@ -16,5 +16,8 @@ public sealed record BackupOutcome(
 
 public interface IBackupEngine
 {
-    Task<BackupOutcome> CreateBackupAsync(BackupRequest request, CancellationToken cancellationToken = default);
+    Task<BackupOutcome> CreateBackupAsync(
+        BackupRequest request,
+        IProgress<OperationProgress>? progress = null,
+        CancellationToken cancellationToken = default);
 }

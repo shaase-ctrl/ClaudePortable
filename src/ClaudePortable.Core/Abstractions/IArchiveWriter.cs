@@ -10,5 +10,6 @@ public interface IArchiveWriter
         string destinationZipPath,
         IEnumerable<ArchiveEntry> entries,
         string manifestJson,
+        IProgress<OperationProgress>? progress = null,
         CancellationToken cancellationToken = default);
 }

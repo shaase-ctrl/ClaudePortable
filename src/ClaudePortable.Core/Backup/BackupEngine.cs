@@ -26,6 +26,7 @@ public sealed class BackupEngine : IBackupEngine
 
     public async Task<BackupOutcome> CreateBackupAsync(
         BackupRequest request,
+        IProgress<OperationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var destination = request.DestinationFolder
@@ -33,6 +34,7 @@ public sealed class BackupEngine : IBackupEngine
 
         Directory.CreateDirectory(destination);
 
+        progress?.Report(new OperationProgress("Discovering Claude paths"));
         var discovered = _pathDiscovery.Discover();
         var existingPaths = discovered.Where(p => p.Exists).ToList();
         var skippedPaths = discovered.Where(p => !p.Exists).ToList();
@@ -47,6 +49,7 @@ public sealed class BackupEngine : IBackupEngine
         var entries = new List<ArchiveEntry>();
         foreach (var p in existingPaths)
         {
+            progress?.Report(new OperationProgress($"Enumerating {p.Key}"));
             var before = entries.Count;
             entries.AddRange(FileEnumerator.Enumerate(p.Path, MapArchivePrefix(p.Key), exclusions));
             filesPerSource[p.Key] = entries.Count - before;
@@ -86,7 +89,7 @@ public sealed class BackupEngine : IBackupEngine
         {
             var manifestJson = ManifestBuilder.Serialize(manifestSeed);
             var archiveResult = await _archiveWriter
-                .WriteAsync(zipPath, combinedEntries, manifestJson, cancellationToken)
+                .WriteAsync(zipPath, combinedEntries, manifestJson, progress, cancellationToken)
                 .ConfigureAwait(false);
 
             var finalManifest = manifestSeed with

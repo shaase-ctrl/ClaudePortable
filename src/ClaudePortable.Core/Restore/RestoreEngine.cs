@@ -29,7 +29,10 @@ public sealed class RestoreEngine : IRestoreEngine
         _clock = clock ?? TimeProvider.System;
     }
 
-    public async Task<RestoreOutcome> RestoreAsync(RestoreRequest request, CancellationToken cancellationToken = default)
+    public async Task<RestoreOutcome> RestoreAsync(
+        RestoreRequest request,
+        IProgress<OperationProgress>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         if (!File.Exists(request.SourceZipPath))
         {
@@ -54,7 +57,8 @@ public sealed class RestoreEngine : IRestoreEngine
 
         try
         {
-            ZipFile.ExtractToDirectory(request.SourceZipPath, tempRoot, overwriteFiles: true);
+            progress?.Report(new OperationProgress("Extracting archive"));
+            await ExtractWithProgressAsync(request.SourceZipPath, tempRoot, progress, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
 
             var manifestPath = Path.Combine(tempRoot, "manifest.json");
@@ -78,6 +82,7 @@ public sealed class RestoreEngine : IRestoreEngine
                 ? Path.GetDirectoryName(oldCodePath.TrimEnd('\\', '/'))!
                 : newUserProfile;
 
+            progress?.Report(new OperationProgress("Rewriting paths"));
             _pathRewriter.Rewrite(tempRoot, oldUserProfile, newUserProfile);
 
             var now = _clock.GetUtcNow();
@@ -109,6 +114,7 @@ public sealed class RestoreEngine : IRestoreEngine
 
                 var warnings = new List<string>();
 
+                progress?.Report(new OperationProgress($"Preserving current {archivePrefix}"));
                 var preserved = SafetyBackup.TryPreserveExisting(targetDir, now);
                 if (preserved.Error is not null)
                 {
@@ -119,7 +125,8 @@ public sealed class RestoreEngine : IRestoreEngine
                     safetyBackups.Add(preserved.BackupPath);
                 }
 
-                var (filesWritten, copyErrors) = CopyDirectoryResilient(sourceDir, targetDir);
+                progress?.Report(new OperationProgress($"Writing {archivePrefix}"));
+                var (filesWritten, copyErrors) = CopyDirectoryResilient(sourceDir, targetDir, archivePrefix, progress);
                 warnings.AddRange(copyErrors);
 
                 perTargetReports.Add(new RestoreTargetReport(
@@ -176,7 +183,11 @@ public sealed class RestoreEngine : IRestoreEngine
     /// a single blocked file (common when a Store-sandbox folder has
     /// some locked or permission-guarded children).
     /// </summary>
-    private static (int FilesWritten, IReadOnlyList<string> Errors) CopyDirectoryResilient(string source, string destination)
+    private static (int FilesWritten, IReadOnlyList<string> Errors) CopyDirectoryResilient(
+        string source,
+        string destination,
+        string archivePrefix,
+        IProgress<OperationProgress>? progress)
     {
         var errors = new List<string>();
         try
@@ -202,11 +213,17 @@ public sealed class RestoreEngine : IRestoreEngine
             }
         }
 
+        var allFiles = Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories).ToList();
         var filesWritten = 0;
-        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        for (var i = 0; i < allFiles.Count; i++)
         {
+            var file = allFiles[i];
             var relative = Path.GetRelativePath(source, file);
             var target = Path.Combine(destination, relative);
+            if ((i & 0x3F) == 0)
+            {
+                progress?.Report(new OperationProgress($"Writing {archivePrefix}", i, allFiles.Count));
+            }
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
@@ -218,8 +235,47 @@ public sealed class RestoreEngine : IRestoreEngine
                 errors.Add($"Skipped '{relative}': {ex.Message}");
             }
         }
+        progress?.Report(new OperationProgress($"Writing {archivePrefix}", allFiles.Count, allFiles.Count));
 
         return (filesWritten, errors);
+    }
+
+    /// <summary>
+    /// Replace the sync <see cref="ZipFile.ExtractToDirectory"/> with a per-
+    /// entry loop that yields progress and threadpool-friendly awaits.
+    /// </summary>
+    private static async Task ExtractWithProgressAsync(
+        string zipPath,
+        string destination,
+        IProgress<OperationProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        using var archive = ZipFile.OpenRead(zipPath);
+        var total = archive.Entries.Count;
+        for (var i = 0; i < total; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var e = archive.Entries[i];
+            if ((i & 0x3F) == 0)
+            {
+                progress?.Report(new OperationProgress("Extracting archive", i, total));
+            }
+
+            if (string.IsNullOrEmpty(e.Name))
+            {
+                // Directory entry.
+                var dirPath = Path.Combine(destination, e.FullName.Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(dirPath);
+                continue;
+            }
+
+            var targetPath = Path.Combine(destination, e.FullName.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+            await using var src = e.Open();
+            await using var dst = File.Create(targetPath);
+            await src.CopyToAsync(dst, cancellationToken).ConfigureAwait(false);
+        }
+        progress?.Report(new OperationProgress("Extracting archive", total, total));
     }
 
     private static void TryDeleteDirectory(string path)

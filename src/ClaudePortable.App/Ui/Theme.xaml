@@ -2,6 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
+    <BooleanToVisibilityConverter x:Key="BoolToVisible" />
+
     <!--
         Claude Desktop-inspired warm-dark palette.
         Every text style below uses a value that hits WCAG 2.1 AA

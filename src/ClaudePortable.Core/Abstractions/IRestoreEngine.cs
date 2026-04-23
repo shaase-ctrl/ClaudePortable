@@ -26,5 +26,8 @@ public sealed record RestoreOutcome(
 
 public interface IRestoreEngine
 {
-    Task<RestoreOutcome> RestoreAsync(RestoreRequest request, CancellationToken cancellationToken = default);
+    Task<RestoreOutcome> RestoreAsync(
+        RestoreRequest request,
+        IProgress<OperationProgress>? progress = null,
+        CancellationToken cancellationToken = default);
 }

@@ -20,15 +20,22 @@ public sealed class ZipArchiveWriter : IArchiveWriter
         string destinationZipPath,
         IEnumerable<ArchiveEntry> entries,
         string manifestJson,
+        IProgress<OperationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        progress?.Report(new OperationProgress("Preparing"));
         var orderedEntries = entries
             .OrderBy(e => e.RelativePath, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var readableEntries = new List<ArchiveEntry>(orderedEntries.Count);
-        foreach (var entry in orderedEntries)
+        for (var i = 0; i < orderedEntries.Count; i++)
         {
+            if ((i & 0xFF) == 0)
+            {
+                progress?.Report(new OperationProgress("Checking accessibility", i, orderedEntries.Count));
+            }
+            var entry = orderedEntries[i];
             if (CanOpenForReadShared(entry.AbsolutePath, out var reason))
             {
                 readableEntries.Add(entry);
@@ -39,7 +46,7 @@ public sealed class ZipArchiveWriter : IArchiveWriter
             }
         }
 
-        var contentHash = await ComputeContentHashAsync(readableEntries, cancellationToken).ConfigureAwait(false);
+        var contentHash = await ComputeContentHashAsync(readableEntries, progress, cancellationToken).ConfigureAwait(false);
         var finalManifest = manifestJson.Replace("__SHA256_PLACEHOLDER__", contentHash, StringComparison.Ordinal);
 
         long totalBytes = 0;
@@ -59,9 +66,14 @@ public sealed class ZipArchiveWriter : IArchiveWriter
                 await writer.WriteAsync(finalManifest).ConfigureAwait(false);
             }
 
-            foreach (var entry in readableEntries)
+            for (var i = 0; i < readableEntries.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                var entry = readableEntries[i];
+                if ((i & 0x3F) == 0)
+                {
+                    progress?.Report(new OperationProgress("Writing archive", i, readableEntries.Count));
+                }
                 FileStream source;
                 try
                 {
@@ -93,8 +105,10 @@ public sealed class ZipArchiveWriter : IArchiveWriter
                     }
                 }
             }
+            progress?.Report(new OperationProgress("Writing archive", readableEntries.Count, readableEntries.Count));
         }
 
+        progress?.Report(new OperationProgress("Finalising archive"));
         File.Move(tempPath, destinationZipPath, overwrite: true);
         return new ArchiveResult(totalBytes, readableEntries.Count, contentHash);
     }
@@ -129,14 +143,20 @@ public sealed class ZipArchiveWriter : IArchiveWriter
     }
 
     private async Task<string> ComputeContentHashAsync(
-        IReadOnlyList<ArchiveEntry> entries,
+        List<ArchiveEntry> entries,
+        IProgress<OperationProgress>? progress,
         CancellationToken cancellationToken)
     {
         using var sha = SHA256.Create();
         var buffer = new byte[81920];
-        foreach (var entry in entries)
+        for (var i = 0; i < entries.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var entry = entries[i];
+            if ((i & 0x3F) == 0)
+            {
+                progress?.Report(new OperationProgress("Hashing content", i, entries.Count));
+            }
             var headerBytes = Encoding.UTF8.GetBytes(entry.RelativePath + "\n");
             sha.TransformBlock(headerBytes, 0, headerBytes.Length, null, 0);
             FileStream stream;

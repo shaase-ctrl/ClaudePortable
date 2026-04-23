@@ -15,7 +15,24 @@
 
         <!-- Status bar at the very bottom -->
         <StatusBar DockPanel.Dock="Bottom">
-            <StatusBarItem Content="{Binding Status}" />
+            <StatusBar.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <DockPanel />
+                </ItemsPanelTemplate>
+            </StatusBar.ItemsPanel>
+            <StatusBarItem DockPanel.Dock="Left">
+                <TextBlock Text="{Binding Status}" />
+            </StatusBarItem>
+            <StatusBarItem DockPanel.Dock="Right" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisible}}" Margin="16,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding ProgressMessage}" Foreground="#D6D3C9" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <ProgressBar Width="220" Height="6"
+                                 Value="{Binding ProgressValue, Mode=OneWay}"
+                                 Minimum="0" Maximum="1"
+                                 IsIndeterminate="{Binding ProgressIsIndeterminate}"
+                                 Foreground="#D97757" Background="#33322F" BorderThickness="0" />
+                </StackPanel>
+            </StatusBarItem>
         </StatusBar>
 
         <!-- Sidebar -->
