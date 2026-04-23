@@ -1,113 +1,280 @@
 <Window x:Class="ClaudePortable.App.Ui.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="ClaudePortable" Width="960" Height="640"
+        Title="ClaudePortable"
+        Width="1120" Height="720"
+        MinWidth="820" MinHeight="520"
         WindowStartupLocation="CenterScreen">
-    <Window.Resources>
-        <Style TargetType="TabItem">
-            <Setter Property="Padding" Value="12,6" />
-        </Style>
-    </Window.Resources>
     <DockPanel>
+
+        <!-- Status bar at the very bottom -->
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBarItem Content="{Binding Status}" />
         </StatusBar>
-        <TabControl Margin="8">
-            <TabItem Header="Status">
-                <Grid Margin="8">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <StackPanel Orientation="Horizontal">
-                        <Button Content="Backup now" Command="{Binding BackupNowCommand}" Padding="12,6" Margin="0,0,8,8" />
-                        <Button Content="Refresh" Command="{Binding RefreshCommand}" Padding="12,6" Margin="0,0,8,8" />
+
+        <!-- Sidebar -->
+        <Border DockPanel.Dock="Left" Width="240" Background="{DynamicResource SidebarBrush}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Brand -->
+                <StackPanel Grid.Row="0">
+                    <StackPanel Orientation="Horizontal" Margin="20,24,20,0">
+                        <Rectangle Width="22" Height="22" RadiusX="5" RadiusY="5" Fill="{DynamicResource AccentBrush}" />
+                        <TextBlock Text="ClaudePortable" Margin="10,0,0,0" FontSize="15" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" />
                     </StackPanel>
-                    <DataGrid Grid.Row="1" ItemsSource="{Binding Backups}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Target" Binding="{Binding TargetFolder}" Width="2*" />
-                            <DataGridTextColumn Header="File" Binding="{Binding FileName}" Width="3*" />
-                            <DataGridTextColumn Header="Bytes" Binding="{Binding SizeBytes, StringFormat=N0}" Width="*" />
-                            <DataGridTextColumn Header="Tier" Binding="{Binding Manifest.RetentionTier}" Width="*" />
-                            <DataGridTextColumn Header="Created" Binding="{Binding Manifest.CreatedAt, StringFormat=yyyy-MM-dd HH:mm}" Width="1.5*" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
-            </TabItem>
+                    <TextBlock Style="{DynamicResource SidebarVersion}" Text="v0.1.0 · alpha" />
+                </StackPanel>
 
-            <TabItem Header="Targets">
-                <Grid Margin="8">
+                <!-- Nav -->
+                <ListBox x:Name="Nav" Grid.Row="1"
+                         Style="{DynamicResource SidebarNav}"
+                         ItemContainerStyle="{DynamicResource NavItem}"
+                         SelectedIndex="0">
+                    <ListBoxItem>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{DynamicResource NavGlyph}" Text="&#xE9D9;" />
+                            <TextBlock Style="{DynamicResource NavLabel}" Text="Status" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{DynamicResource NavGlyph}" Text="&#xE8B7;" />
+                            <TextBlock Style="{DynamicResource NavLabel}" Text="Targets" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{DynamicResource NavGlyph}" Text="&#xE721;" />
+                            <TextBlock Style="{DynamicResource NavLabel}" Text="Discovery" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{DynamicResource NavGlyph}" Text="&#xE7A7;" />
+                            <TextBlock Style="{DynamicResource NavLabel}" Text="Restore" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{DynamicResource NavGlyph}" Text="&#xE9F9;" />
+                            <TextBlock Style="{DynamicResource NavLabel}" Text="Logs" />
+                        </StackPanel>
+                    </ListBoxItem>
+                </ListBox>
+
+                <!-- Footer: always-visible primary action -->
+                <StackPanel Grid.Row="2" Margin="16,8,16,20">
+                    <Button Content="Backup now"
+                            Style="{DynamicResource PrimaryButton}"
+                            Command="{Binding BackupNowCommand}"
+                            HorizontalAlignment="Stretch" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Subtle divider between sidebar and content -->
+        <Border DockPanel.Dock="Left" Width="1" Background="{DynamicResource BorderBrush}" />
+
+        <!-- Main content area, driven by sidebar -->
+        <TabControl Style="{DynamicResource HiddenTabs}" SelectedIndex="{Binding ElementName=Nav, Path=SelectedIndex}">
+
+            <!-- 1. Status / Dashboard -->
+            <TabItem>
+                <Grid Margin="32,24,32,24">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <StackPanel Orientation="Horizontal">
-                        <Button Content="Add folder..." Command="{Binding AddTargetCommand}" Padding="12,6" Margin="0,0,8,8" />
-                        <Button Content="Remove selected" Command="{Binding RemoveTargetCommand}" Padding="12,6" Margin="0,0,8,8" />
+
+                    <TextBlock Style="{DynamicResource H1}" Text="Status" />
+                    <TextBlock Style="{DynamicResource Caption}" Text="A snapshot of your Claude backups across all configured folders." Margin="0,0,0,20" Grid.Row="1" />
+
+                    <!-- Summary cards -->
+                    <UniformGrid Grid.Row="2" Columns="3" Margin="0,0,0,20">
+                        <Border Style="{DynamicResource Card}" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Style="{DynamicResource Caption}" Text="BACKUPS" />
+                                <TextBlock Text="{Binding Backups.Count}" FontSize="32" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                <TextBlock Style="{DynamicResource Muted}" Text="across all targets" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{DynamicResource Card}" Margin="4,0,4,0">
+                            <StackPanel>
+                                <TextBlock Style="{DynamicResource Caption}" Text="TARGETS" />
+                                <TextBlock Text="{Binding Targets.Count}" FontSize="32" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                <TextBlock Style="{DynamicResource Muted}" Text="folders configured" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{DynamicResource Card}" Margin="8,0,0,0">
+                            <StackPanel>
+                                <TextBlock Style="{DynamicResource Caption}" Text="DISCOVERED" />
+                                <TextBlock Text="{Binding ClaudePaths.Count}" FontSize="32" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                <TextBlock Style="{DynamicResource Muted}" Text="Claude paths found" />
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,12">
+                        <TextBlock Style="{DynamicResource H2}" Text="Recent backups" VerticalAlignment="Center" />
+                        <Button Content="Refresh"
+                                Command="{Binding RefreshCommand}"
+                                HorizontalAlignment="Right" Margin="16,0,0,8" />
                     </StackPanel>
-                    <DataGrid Grid.Row="1" ItemsSource="{Binding Targets}" SelectedItem="{Binding SelectedTarget}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
+
+                    <DataGrid Grid.Row="4"
+                              ItemsSource="{Binding Backups}"
+                              AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Path" Binding="{Binding Path}" Width="*" />
+                            <DataGridTextColumn Header="TIER" Binding="{Binding Manifest.RetentionTier}" Width="Auto" />
+                            <DataGridTextColumn Header="CREATED" Binding="{Binding Manifest.CreatedAt, StringFormat=yyyy-MM-dd HH:mm}" Width="Auto" />
+                            <DataGridTextColumn Header="HOSTNAME" Binding="{Binding Manifest.Hostname}" Width="Auto" />
+                            <DataGridTextColumn Header="SIZE" Binding="{Binding SizeBytes, StringFormat=N0}" Width="Auto" />
+                            <DataGridTextColumn Header="FILE" Binding="{Binding FileName}" Width="*" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Discovery">
-                <Grid Margin="8">
+            <!-- 2. Targets -->
+            <TabItem>
+                <Grid Margin="32,24,32,24">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="Claude paths" FontWeight="Bold" Margin="0,0,0,4" />
-                    <DataGrid Grid.Row="1" ItemsSource="{Binding ClaudePaths}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="*" />
-                            <DataGridTextColumn Header="Path" Binding="{Binding Path}" Width="3*" />
-                            <DataGridCheckBoxColumn Header="Exists" Binding="{Binding Exists}" Width="Auto" />
-                            <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="2*" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    <TextBlock Grid.Row="2" Text="Sync clients" FontWeight="Bold" Margin="0,12,0,4" />
-                    <DataGrid Grid.Row="3" ItemsSource="{Binding SyncClients}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
-                            <DataGridTextColumn Header="Path" Binding="{Binding Path}" Width="3*" />
-                            <DataGridCheckBoxColumn Header="Avail" Binding="{Binding IsAvailable}" Width="Auto" />
-                            <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="2*" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
-            </TabItem>
 
-            <TabItem Header="Restore">
-                <Grid Margin="8">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-                        Select a backup below and click Restore. Existing Claude data will be moved aside (not deleted) before the restore runs.
-                    </TextBlock>
-                    <DockPanel Grid.Row="1">
-                        <Button Content="Restore selected" DockPanel.Dock="Bottom" Command="{Binding RestoreCommand}" Padding="12,6" Margin="0,8,0,0" HorizontalAlignment="Left" />
-                        <DataGrid ItemsSource="{Binding Backups}" SelectedItem="{Binding SelectedBackup}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
+                    <TextBlock Style="{DynamicResource H1}" Text="Targets" />
+                    <TextBlock Style="{DynamicResource Caption}" Text="Folders where ClaudePortable writes backup ZIPs. Let OneDrive, Google Drive, Dropbox, or your own sync client handle the upload." Margin="0,0,0,20" Grid.Row="1" TextWrapping="Wrap" />
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button Content="Add folder"
+                                Style="{DynamicResource PrimaryButton}"
+                                Command="{Binding AddTargetCommand}"
+                                Margin="0,0,8,0" />
+                        <Button Content="Remove selected"
+                                Command="{Binding RemoveTargetCommand}" />
+                    </StackPanel>
+
+                    <Border Style="{DynamicResource Card}" Padding="0" Grid.Row="3">
+                        <DataGrid ItemsSource="{Binding Targets}" SelectedItem="{Binding SelectedTarget}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="File" Binding="{Binding FileName}" Width="3*" />
-                                <DataGridTextColumn Header="Tier" Binding="{Binding Manifest.RetentionTier}" Width="*" />
-                                <DataGridTextColumn Header="Created" Binding="{Binding Manifest.CreatedAt, StringFormat=yyyy-MM-dd HH:mm}" Width="1.5*" />
-                                <DataGridTextColumn Header="Hostname" Binding="{Binding Manifest.Hostname}" Width="*" />
+                                <DataGridTextColumn Header="PATH" Binding="{Binding Path}" Width="*" />
                             </DataGrid.Columns>
                         </DataGrid>
-                    </DockPanel>
+                    </Border>
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Logs">
-                <ListBox ItemsSource="{Binding LogEntries}" Margin="8" FontFamily="Consolas" />
+            <!-- 3. Discovery -->
+            <TabItem>
+                <Grid Margin="32,24,32,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{DynamicResource H1}" Text="Discovery" />
+                    <TextBlock Style="{DynamicResource Caption}" Text="What ClaudePortable found on this machine. Paths that do not exist are skipped during backup." Margin="0,0,0,20" Grid.Row="1" TextWrapping="Wrap" />
+
+                    <TextBlock Style="{DynamicResource H2}" Text="Claude paths" Grid.Row="2" Margin="0,0,0,8" />
+                    <Border Style="{DynamicResource Card}" Padding="0" Grid.Row="3">
+                        <DataGrid ItemsSource="{Binding ClaudePaths}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="KEY" Binding="{Binding Key}" Width="Auto" />
+                                <DataGridTextColumn Header="PATH" Binding="{Binding Path}" Width="*" />
+                                <DataGridCheckBoxColumn Header="EXISTS" Binding="{Binding Exists}" Width="Auto" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+
+                    <TextBlock Style="{DynamicResource H2}" Text="Sync clients" Grid.Row="4" Margin="0,20,0,8" />
+                    <Border Style="{DynamicResource Card}" Padding="0" Grid.Row="5">
+                        <DataGrid ItemsSource="{Binding SyncClients}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="Auto" />
+                                <DataGridTextColumn Header="PATH" Binding="{Binding Path}" Width="*" />
+                                <DataGridCheckBoxColumn Header="AVAIL" Binding="{Binding IsAvailable}" Width="Auto" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- 4. Restore -->
+            <TabItem>
+                <Grid Margin="32,24,32,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{DynamicResource H1}" Text="Restore" />
+                    <TextBlock Style="{DynamicResource Caption}" TextWrapping="Wrap" Margin="0,0,0,20" Grid.Row="1">
+                        Select a backup and confirm. ClaudePortable moves the current Claude data aside to
+                        <Run FontFamily="{DynamicResource MonoFont}">&lt;folder&gt;_backup_&lt;timestamp&gt;</Run>
+                        before restoring — nothing is deleted.
+                    </TextBlock>
+
+                    <TextBlock Style="{DynamicResource H2}" Text="Available snapshots" Grid.Row="2" />
+
+                    <Border Style="{DynamicResource Card}" Padding="0" Grid.Row="3">
+                        <DataGrid ItemsSource="{Binding Backups}" SelectedItem="{Binding SelectedBackup}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="TIER" Binding="{Binding Manifest.RetentionTier}" Width="Auto" />
+                                <DataGridTextColumn Header="CREATED" Binding="{Binding Manifest.CreatedAt, StringFormat=yyyy-MM-dd HH:mm}" Width="Auto" />
+                                <DataGridTextColumn Header="HOSTNAME" Binding="{Binding Manifest.Hostname}" Width="Auto" />
+                                <DataGridTextColumn Header="FILE" Binding="{Binding FileName}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+
+                    <Button Content="Restore selected snapshot"
+                            Style="{DynamicResource PrimaryButton}"
+                            Command="{Binding RestoreCommand}"
+                            HorizontalAlignment="Left" Margin="0,16,0,0" Grid.Row="4" />
+                </Grid>
+            </TabItem>
+
+            <!-- 5. Logs -->
+            <TabItem>
+                <Grid Margin="32,24,32,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{DynamicResource H1}" Text="Logs" />
+                    <TextBlock Style="{DynamicResource Caption}" Text="Most recent 500 lines from this session. Logs persist in memory only — restart clears them." Margin="0,0,0,20" Grid.Row="1" />
+
+                    <Border Style="{DynamicResource Card}" Grid.Row="2">
+                        <ListBox ItemsSource="{Binding LogEntries}" />
+                    </Border>
+                </Grid>
             </TabItem>
         </TabControl>
+
     </DockPanel>
 </Window>

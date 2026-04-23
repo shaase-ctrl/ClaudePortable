@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Runtime.Versioning;
 using System.Windows;
 using ClaudePortable.App.Ui.Views;
@@ -13,6 +14,8 @@ public static class App
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown,
         };
+
+        LoadThemeResources(app);
 
         var tray = new TrayIcon();
         var mainWindow = new MainWindow();
@@ -30,5 +33,13 @@ public static class App
 
         mainWindow.Show();
         return app.Run();
+    }
+
+    private static void LoadThemeResources(System.Windows.Application app)
+    {
+        var assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
+        var uri = new Uri($"pack://application:,,,/{assemblyName};component/Ui/Theme.xaml", UriKind.Absolute);
+        var theme = new ResourceDictionary { Source = uri };
+        app.Resources.MergedDictionaries.Add(theme);
     }
 }
