@@ -5,12 +5,24 @@ namespace ClaudePortable.Core.Restore;
 
 public sealed class PathRewriter : IPathRewriter
 {
-    private static readonly Regex JsonUserPathPattern = new(
-        @"(?<drive>[A-Z]):\\\\Users\\\\(?<user>[^\\\\""]+)\\\\(?<tail>\.claude|AppData\\\\Roaming\\\\Claude|AppData\\\\Local\\\\Claude|\.cowork)",
+    // Match any "<drive>:<sep>Users<sep><user><sep>" prefix. We intentionally
+    // do NOT tie this to .claude / AppData / .cowork tails any more: Claude
+    // Desktop configs and Claude Code session state frequently reference
+    // arbitrary paths under the user's home (project folders, screenshots,
+    // recently-opened files, ...). Those all need to follow the user-name
+    // shift when a backup is restored onto a machine with a different
+    // %USERPROFILE%. Overshooting is safe: rewriting C:\Users\sascha\foo
+    // to C:\Users\sasch\foo at least points at the new user's home.
+    private static readonly Regex EscapedBackslashPattern = new(
+        @"(?<drive>[A-Z]):\\\\Users\\\\(?<user>[^\\\\""]+)\\\\",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    private static readonly Regex JsonUserPathPatternSingleBackslash = new(
-        @"(?<drive>[A-Z]):\\Users\\(?<user>[^\\""]+)\\(?<tail>\.claude|AppData\\Roaming\\Claude|AppData\\Local\\Claude|\.cowork)",
+    private static readonly Regex SingleBackslashPattern = new(
+        @"(?<drive>[A-Z]):\\Users\\(?<user>[^\\""]+)\\",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex ForwardSlashPattern = new(
+        @"(?<drive>[A-Z]):/Users/(?<user>[^/""]+)/",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public PathRewriteResult Rewrite(string rootFolder, string oldUserProfile, string newUserProfile)
@@ -60,32 +72,43 @@ public sealed class PathRewriter : IPathRewriter
         }
 
         var count = 0;
-        var stage1 = JsonUserPathPattern.Replace(content, m =>
+
+        var stage1 = EscapedBackslashPattern.Replace(content, m =>
         {
-            var user = m.Groups["user"].Value;
-            if (!string.Equals(user, oldUserName, StringComparison.OrdinalIgnoreCase))
+            if (!MatchesOldUser(m, oldUserName))
             {
                 return m.Value;
             }
             count++;
-            var drive = m.Groups["drive"].Value;
-            var tail = m.Groups["tail"].Value;
-            return $@"{drive}:\\Users\\{newUserName}\\{tail}";
+            return $@"{m.Groups["drive"].Value}:\\Users\\{newUserName}\\";
         });
 
-        var stage2 = JsonUserPathPatternSingleBackslash.Replace(stage1, m =>
+        var stage2 = SingleBackslashPattern.Replace(stage1, m =>
         {
-            var user = m.Groups["user"].Value;
-            if (!string.Equals(user, oldUserName, StringComparison.OrdinalIgnoreCase))
+            if (!MatchesOldUser(m, oldUserName))
             {
                 return m.Value;
             }
             count++;
-            var drive = m.Groups["drive"].Value;
-            var tail = m.Groups["tail"].Value;
-            return $@"{drive}:\Users\{newUserName}\{tail}";
+            return $@"{m.Groups["drive"].Value}:\Users\{newUserName}\";
         });
 
-        return (count, stage2);
+        var stage3 = ForwardSlashPattern.Replace(stage2, m =>
+        {
+            if (!MatchesOldUser(m, oldUserName))
+            {
+                return m.Value;
+            }
+            count++;
+            return $"{m.Groups["drive"].Value}:/Users/{newUserName}/";
+        });
+
+        return (count, stage3);
+    }
+
+    private static bool MatchesOldUser(Match m, string oldUserName)
+    {
+        var user = m.Groups["user"].Value;
+        return string.Equals(user, oldUserName, StringComparison.OrdinalIgnoreCase);
     }
 }

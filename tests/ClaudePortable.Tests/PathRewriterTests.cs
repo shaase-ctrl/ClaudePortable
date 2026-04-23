@@ -65,6 +65,38 @@ public class PathRewriterTests
     }
 
     [Fact]
+    public void ReplaceIn_ArbitraryPathUnderUserHome_IsReplaced()
+    {
+        // Project folder, not under .claude / AppData / .cowork.
+        var input = @"{""lastProject"":""C:\\Users\\sascha\\projects\\my-app""}";
+        var (count, result) = PathRewriter.ReplaceIn(input, "sascha", "sasch");
+
+        Assert.Equal(1, count);
+        Assert.Contains(@"C:\\Users\\sasch\\projects\\my-app", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("sascha", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReplaceIn_ForwardSlashPath_IsReplaced()
+    {
+        var input = @"{""path"":""C:/Users/sascha/Documents/claude.config""}";
+        var (count, result) = PathRewriter.ReplaceIn(input, "sascha", "sasch");
+
+        Assert.Equal(1, count);
+        Assert.Contains("C:/Users/sasch/Documents/claude.config", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReplaceIn_MixedStyles_AllReplaced()
+    {
+        var input = @"[""C:\\Users\\sascha\\.claude"", ""C:/Users/sascha/projects"", ""C:\Users\sascha\AppData\Local\Claude""]";
+        var (count, result) = PathRewriter.ReplaceIn(input, "sascha", "sasch");
+
+        Assert.Equal(3, count);
+        Assert.DoesNotContain("sascha", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Rewrite_ProcessesOnlyJsonFiles()
     {
         var root = Path.Combine(Path.GetTempPath(), $"cp-rewriter-{Guid.NewGuid():N}");
