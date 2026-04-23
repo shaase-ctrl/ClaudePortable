@@ -9,10 +9,10 @@ on:
       version:
         description: "Version tag to build (e.g. 0.1.0)"
         required: true
-        default: "0.1.0"
+        default: "0.1.1"
 
 jobs:
-  build-msi:
+  build-release:
     runs-on: windows-latest
     permissions:
       contents: write
@@ -48,7 +48,8 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release
 
-      - name: Publish App (self-contained win-x64)
+      # --- MSI artifact ---
+      - name: Publish App (multi-file, for MSI)
         run: |
           dotnet publish src/ClaudePortable.App/ClaudePortable.App.csproj `
             --configuration Release `
@@ -56,6 +57,7 @@ jobs:
             --self-contained true `
             -p:PublishSingleFile=false `
             -p:InvariantGlobalization=false `
+            -p:InformationalVersion=${{ steps.ver.outputs.version }} `
             --output src/ClaudePortable.Installer/staging
 
       - name: Build MSI
@@ -65,16 +67,80 @@ jobs:
             -p:InstallerVersion=${{ steps.ver.outputs.version }} `
             -p:PublishStageDir=${{ github.workspace }}\src\ClaudePortable.Installer\staging
 
+      # --- Portable single-file exe ---
+      - name: Publish portable single-file exe
+        run: |
+          dotnet publish src/ClaudePortable.App/ClaudePortable.App.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:IncludeAllContentForSelfExtract=true `
+            -p:DebugType=embedded `
+            -p:InvariantGlobalization=false `
+            -p:AssemblyVersion=${{ steps.ver.outputs.version }}.0 `
+            -p:FileVersion=${{ steps.ver.outputs.version }}.0 `
+            -p:InformationalVersion=${{ steps.ver.outputs.version }} `
+            --output dist/portable
+
+      - name: Stamp portable filename + SHA256
+        id: hash
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.ver.outputs.version }}"
+          $src = "dist/portable/claudeportable.exe"
+          $dst = "ClaudePortable-$ver-portable.exe"
+          Copy-Item $src $dst -Force
+          $h = (Get-FileHash $dst -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$h  $dst" | Out-File "$dst.sha256" -Encoding ascii
+          Write-Output "exe=$dst" >> $env:GITHUB_OUTPUT
+          Write-Output "sha=$dst.sha256" >> $env:GITHUB_OUTPUT
+          Write-Host "SHA256: $h"
+
+      # --- Upload ---
       - name: Upload MSI artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ClaudePortable-${{ steps.ver.outputs.version }}.msi
+          name: ClaudePortable-${{ steps.ver.outputs.version }}-msi
           path: src/ClaudePortable.Installer/bin/Release/ClaudePortable-${{ steps.ver.outputs.version }}.msi
+          if-no-files-found: error
+
+      - name: Upload portable exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClaudePortable-${{ steps.ver.outputs.version }}-portable
+          path: |
+            ${{ steps.hash.outputs.exe }}
+            ${{ steps.hash.outputs.sha }}
           if-no-files-found: error
 
       - name: Attach to GitHub Release
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          files: src/ClaudePortable.Installer/bin/Release/ClaudePortable-${{ steps.ver.outputs.version }}.msi
+          files: |
+            src/ClaudePortable.Installer/bin/Release/ClaudePortable-${{ steps.ver.outputs.version }}.msi
+            ${{ steps.hash.outputs.exe }}
+            ${{ steps.hash.outputs.sha }}
           generate_release_notes: true
+          body: |
+            ## Downloads
+
+            - `ClaudePortable-${{ steps.ver.outputs.version }}-portable.exe` - single-file, no install required. Double-click to run.
+            - `ClaudePortable-${{ steps.ver.outputs.version }}.msi` - per-machine installer with Start-menu shortcut.
+            - `ClaudePortable-${{ steps.ver.outputs.version }}-portable.exe.sha256` - checksum for portable exe.
+
+            ## First-run warning (unsigned)
+
+            Both artifacts are **unsigned**. Windows SmartScreen will warn you on first run.
+
+            **Portable exe:**
+            1. Right-click the downloaded file -> Properties -> check "Unblock" at the bottom -> OK.
+            2. Double-click to run.
+
+            **Or verify the SHA256 first:**
+            ```powershell
+            (Get-FileHash .\ClaudePortable-${{ steps.ver.outputs.version }}-portable.exe -Algorithm SHA256).Hash
+            ```
+            Match against the `.sha256` file. Then unblock + run.

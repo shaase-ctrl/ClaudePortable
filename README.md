@@ -19,17 +19,45 @@ Out of scope (by design):
 - Plugin binary re-install - `.remote-plugins/` excluded; `claude plugin sync` required post-restore
 - Cloud-API uploads - ClaudePortable writes to a folder, any sync client propagates
 
-## Install
+## Download
 
-1. Install the .NET 10 SDK or Desktop Runtime (Windows x64).
-2. Clone this repo.
-3. Build:
-   ```
-   dotnet build -c Release
-   ```
-4. The CLI binary is at `src/ClaudePortable.App/bin/Release/net10.0-windows/claudeportable.exe`.
+Grab the latest build from the [Releases page](../../releases). Two options:
 
-An MSI installer is tracked in [issue #3](../../issues).
+| Artifact | Best for | Install | Uninstall |
+|---|---|---|---|
+| `ClaudePortable-<version>-portable.exe` | Running on any machine without admin | Double-click the exe | Delete the exe + `%LOCALAPPDATA%\ClaudePortable` |
+| `ClaudePortable-<version>.msi` | Permanent install with Start-menu entry | Run the MSI | Apps & Features -> ClaudePortable -> Uninstall |
+
+Both artifacts are **self-contained** - they bundle the .NET 10 Windows Desktop runtime, so you do not need to install anything else.
+
+### First-run SmartScreen warning (unsigned)
+
+Releases are not code-signed yet. On first run Windows SmartScreen shows "Windows protected your PC". To unblock:
+
+1. Right-click the downloaded file -> **Properties** -> tick **Unblock** at the bottom -> **OK**.
+2. Double-click to run.
+
+For a belt-and-braces check, verify the SHA-256 against the `.sha256` file shipped next to the exe:
+
+```powershell
+(Get-FileHash .\ClaudePortable-<version>-portable.exe -Algorithm SHA256).Hash
+```
+
+### Build from source
+
+```
+dotnet build -c Release
+```
+
+Binary lands at `src/ClaudePortable.App/bin/Release/net10.0-windows/claudeportable.exe`.
+
+To build your own portable exe:
+
+```
+pwsh scripts/build-exe.ps1 -Version 0.1.1
+```
+
+Produces `ClaudePortable-0.1.1-portable.exe` in the repo root.
 
 ## Usage
 

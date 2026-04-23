@@ -38,3 +38,8 @@ cpbackup*/
 src/ClaudePortable.Installer/staging/
 *.msi
 *.wixpdb
+
+# Portable single-file exe build output
+dist/
+*-portable.exe
+*-portable.exe.sha256
