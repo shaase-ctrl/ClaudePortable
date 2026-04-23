@@ -43,9 +43,14 @@ public sealed class BackupEngine : IBackupEngine
         }
 
         var exclusions = new ExclusionGlob(DefaultExclusions.Globs);
-        var entries = existingPaths
-            .SelectMany(p => FileEnumerator.Enumerate(p.Path, MapArchivePrefix(p.Key), exclusions))
-            .ToList();
+        var filesPerSource = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var entries = new List<ArchiveEntry>();
+        foreach (var p in existingPaths)
+        {
+            var before = entries.Count;
+            entries.AddRange(FileEnumerator.Enumerate(p.Path, MapArchivePrefix(p.Key), exclusions));
+            filesPerSource[p.Key] = entries.Count - before;
+        }
 
         var createdAt = _clock.GetUtcNow();
         var filename = BuildFilename(createdAt, request.Tier);
@@ -72,7 +77,7 @@ public sealed class BackupEngine : IBackupEngine
 
         if (request.DryRun)
         {
-            return new BackupOutcome(zipPath, manifestSeed, WasDryRun: true, skippedPaths);
+            return new BackupOutcome(zipPath, manifestSeed, WasDryRun: true, skippedPaths, filesPerSource);
         }
 
         var checklistEntry = BuildChecklistEntry();
@@ -91,7 +96,7 @@ public sealed class BackupEngine : IBackupEngine
                 Sha256 = archiveResult.Sha256,
             };
 
-            return new BackupOutcome(zipPath, finalManifest, WasDryRun: false, skippedPaths);
+            return new BackupOutcome(zipPath, finalManifest, WasDryRun: false, skippedPaths, filesPerSource);
         }
         finally
         {

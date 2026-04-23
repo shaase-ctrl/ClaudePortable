@@ -167,6 +167,10 @@ public sealed class MainViewModel : ViewModelBase
             var engine = new BackupEngine(new WindowsPathDiscovery(), new ZipArchiveWriter());
             var outcome = await engine.CreateBackupAsync(new BackupRequest(target.Path, RetentionTier.Daily)).ConfigureAwait(true);
             UiLogSink.Instance.Append($"backup done: {Path.GetFileName(outcome.ZipPath)} ({outcome.Manifest.FileCount} files, {outcome.Manifest.SizeBytes:N0} bytes)");
+            foreach (var (key, count) in outcome.FilesPerSource)
+            {
+                UiLogSink.Instance.Append($"  {key}: {count} files enumerated");
+            }
             foreach (var skipped in outcome.SkippedPaths)
             {
                 UiLogSink.Instance.Append($"  skipped (not present on this machine): {skipped.Key} <- {skipped.Path}");

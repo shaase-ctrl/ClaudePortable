@@ -11,7 +11,8 @@ public sealed record BackupOutcome(
     string ZipPath,
     BackupManifest Manifest,
     bool WasDryRun,
-    IReadOnlyList<DiscoveredClaudePath> SkippedPaths);
+    IReadOnlyList<DiscoveredClaudePath> SkippedPaths,
+    IReadOnlyDictionary<string, int> FilesPerSource);
 
 public interface IBackupEngine
 {

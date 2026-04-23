@@ -70,6 +70,14 @@ public static class BackupCommand
             {
                 Console.WriteLine($"[dry-run] would create {outcome.ZipPath}");
                 Console.WriteLine($"[dry-run] files (before manifest+checklist): {outcome.Manifest.FileCount}");
+                foreach (var (key, cnt) in outcome.FilesPerSource)
+                {
+                    Console.WriteLine($"[dry-run]   {key}: {cnt} files");
+                }
+                foreach (var skipped in outcome.SkippedPaths)
+                {
+                    Console.Error.WriteLine($"[dry-run] warning: skipped (not present): {skipped.Key} <- {skipped.Path}");
+                }
                 return;
             }
 
@@ -77,6 +85,10 @@ public static class BackupCommand
             Console.WriteLine($"files:   {outcome.Manifest.FileCount}");
             Console.WriteLine($"bytes:   {outcome.Manifest.SizeBytes:N0}");
             Console.WriteLine($"sha256:  {outcome.Manifest.Sha256}");
+            foreach (var (key, cnt) in outcome.FilesPerSource)
+            {
+                Console.WriteLine($"  {key}: {cnt} files");
+            }
             foreach (var skipped in outcome.SkippedPaths)
             {
                 Console.Error.WriteLine($"warning: skipped path (not present): {skipped.Key} <- {skipped.Path}");
