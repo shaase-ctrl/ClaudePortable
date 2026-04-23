@@ -2,21 +2,38 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <!-- Claude Desktop-inspired warm-dark palette -->
+    <!--
+        Claude Desktop-inspired warm-dark palette.
+        WCAG 2.1 AA contrast ratios vs main background #262624 (text must hit 4.5:1):
+          TextPrimary   #F5F4EE -> 13.8:1  (AAA)
+          TextSecondary #C8C5BC -> 9.1:1   (AAA)
+          TextMuted     #A09E95 -> 5.6:1   (AA body)
+          Accent coral  #D97757 -> 5.1:1   (AA body)
+          PrimaryBtnFg  #1F1E1D on #D97757 -> 6.7:1 (AA body)
+          Warn          #D4A574 -> 6.3:1   (AA body)
+          Error         #E57B73 -> 4.8:1   (AA body)
+        Surfaces (#33322F) and borders (#4A4944) are decorative per
+        WCAG 1.4.11 (they do not convey state on their own); cards rely
+        on both the fill and a thin border to separate from the main
+        background.
+    -->
+
     <Color x:Key="BgColor">#262624</Color>
-    <Color x:Key="SidebarColor">#1F1E1D</Color>
-    <Color x:Key="SurfaceColor">#2F2E2C</Color>
-    <Color x:Key="SurfaceHoverColor">#363533</Color>
-    <Color x:Key="BorderColor">#3D3C3A</Color>
+    <Color x:Key="SidebarColor">#1A1917</Color>
+    <Color x:Key="SurfaceColor">#33322F</Color>
+    <Color x:Key="SurfaceHoverColor">#3D3C39</Color>
+    <Color x:Key="BorderColor">#4A4944</Color>
     <Color x:Key="TextPrimaryColor">#F5F4EE</Color>
-    <Color x:Key="TextSecondaryColor">#B3B1A8</Color>
-    <Color x:Key="TextMutedColor">#807E75</Color>
+    <Color x:Key="TextSecondaryColor">#C8C5BC</Color>
+    <Color x:Key="TextMutedColor">#A09E95</Color>
     <Color x:Key="AccentColor">#D97757</Color>
-    <Color x:Key="AccentHoverColor">#C15F3C</Color>
-    <Color x:Key="AccentPressedColor">#A84E2F</Color>
-    <Color x:Key="SuccessColor">#8BA88B</Color>
+    <Color x:Key="AccentHoverColor">#E28F6F</Color>
+    <Color x:Key="AccentPressedColor">#B96340</Color>
+    <Color x:Key="AccentFgColor">#1F1E1D</Color>
+    <Color x:Key="SuccessColor">#8FB38F</Color>
     <Color x:Key="WarnColor">#D4A574</Color>
-    <Color x:Key="ErrorColor">#C4514A</Color>
+    <Color x:Key="ErrorColor">#E57B73</Color>
+    <Color x:Key="FocusRingColor">#F0B896</Color>
 
     <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}" />
     <SolidColorBrush x:Key="SidebarBrush" Color="{StaticResource SidebarColor}" />
@@ -29,9 +46,11 @@
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
     <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHoverColor}" />
     <SolidColorBrush x:Key="AccentPressedBrush" Color="{StaticResource AccentPressedColor}" />
+    <SolidColorBrush x:Key="AccentFgBrush" Color="{StaticResource AccentFgColor}" />
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
     <SolidColorBrush x:Key="WarnBrush" Color="{StaticResource WarnColor}" />
     <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}" />
+    <SolidColorBrush x:Key="FocusRingBrush" Color="{StaticResource FocusRingColor}" />
 
     <FontFamily x:Key="UiFont">Segoe UI Variable,Segoe UI</FontFamily>
     <FontFamily x:Key="MonoFont">Cascadia Mono,Consolas,Courier New</FontFamily>
@@ -68,7 +87,7 @@
     </Style>
 
     <Style x:Key="Caption" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
     </Style>
 
@@ -86,7 +105,7 @@
     </Style>
 
     <Style x:Key="SidebarVersion" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
         <Setter Property="Padding" Value="20,0,20,20" />
     </Style>
@@ -94,18 +113,22 @@
     <!-- Buttons -->
     <Style x:Key="PrimaryButton" TargetType="Button">
         <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="Foreground" Value="{StaticResource AccentFgBrush}" />
         <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Padding" Value="16,8" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                            BorderBrush="{StaticResource FocusRingBrush}" BorderThickness="0"
+                            CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextBlock.Foreground="{TemplateBinding Foreground}" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -113,9 +136,13 @@
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentPressedBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="BorderThickness" Value="2" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.5" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -132,6 +159,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
         <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -139,14 +167,19 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="8" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextBlock.Foreground="{TemplateBinding Foreground}" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceHoverBrush}" />
                         </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource FocusRingBrush}" />
+                            <Setter TargetName="Bd" Property="BorderThickness" Value="2" />
+                        </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.5" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -154,10 +187,9 @@
         </Setter>
     </Style>
 
-    <!-- Default Button style: secondary -->
     <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}" />
 
-    <!-- Navigation item (used inside ListBox on the sidebar) -->
+    <!-- Navigation item in the sidebar -->
     <Style x:Key="NavItem" TargetType="ListBoxItem">
         <Setter Property="Padding" Value="20,0" />
         <Setter Property="Height" Value="40" />
@@ -166,6 +198,7 @@
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Background" Value="Transparent" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
@@ -173,18 +206,24 @@
                         <Rectangle x:Name="SelBar" Width="3" HorizontalAlignment="Left"
                                    Fill="{StaticResource AccentBrush}" Opacity="0" />
                         <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{StaticResource FocusRingBrush}" BorderThickness="0"
                                 Padding="{TemplateBinding Padding}" Margin="6,2,6,2" CornerRadius="6">
-                            <ContentPresenter VerticalAlignment="Center" />
+                            <ContentPresenter VerticalAlignment="Center"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}" />
                         </Border>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceHoverBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceBrush}" />
                             <Setter TargetName="SelBar" Property="Opacity" Value="1" />
                             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="BorderThickness" Value="2" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -192,7 +231,6 @@
         </Setter>
     </Style>
 
-    <!-- Sidebar ListBox host -->
     <Style x:Key="SidebarNav" TargetType="ListBox">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -200,7 +238,6 @@
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
     </Style>
 
-    <!-- "Card" surface -->
     <Style x:Key="Card" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
@@ -209,22 +246,20 @@
         <Setter Property="Padding" Value="20" />
     </Style>
 
-    <!-- DataGrid restyle: flat, dark, readable -->
+    <!-- DataGrid -->
     <Style TargetType="DataGrid">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="GridLinesVisibility" Value="None" />
         <Setter Property="RowBackground" Value="Transparent" />
-        <Setter Property="AlternatingRowBackground" Value="{StaticResource SurfaceBrush}" />
+        <Setter Property="AlternatingRowBackground" Value="{StaticResource SurfaceHoverBrush}" />
         <Setter Property="HeadersVisibility" Value="Column" />
         <Setter Property="RowHeight" Value="34" />
         <Setter Property="ColumnHeaderHeight" Value="36" />
         <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="CanUserResizeRows" Value="False" />
-        <Setter Property="VerticalGridLinesBrush" Value="Transparent" />
-        <Setter Property="HorizontalGridLinesBrush" Value="Transparent" />
     </Style>
 
     <Style TargetType="DataGridColumnHeader">
@@ -243,19 +278,21 @@
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="Background" Value="Transparent" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="DataGridCell">
                     <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-                        <ContentPresenter VerticalAlignment="Center" />
+                        <ContentPresenter VerticalAlignment="Center"
+                                          TextBlock.Foreground="{TemplateBinding Foreground}" />
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
         <Style.Triggers>
             <Trigger Property="IsSelected" Value="True">
-                <Setter Property="Background" Value="{StaticResource SurfaceHoverBrush}" />
-                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource AccentFgBrush}" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -284,7 +321,7 @@
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
     </Style>
 
-    <!-- ListBox (generic, e.g. logs) -->
+    <!-- Generic ListBox (e.g. log viewer) -->
     <Style TargetType="ListBox">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
@@ -299,14 +336,12 @@
         <Setter Property="Background" Value="Transparent" />
     </Style>
 
-    <!-- ScrollBar: slim, subtle -->
     <Style TargetType="ScrollBar">
         <Setter Property="Width" Value="10" />
         <Setter Property="MinWidth" Value="10" />
         <Setter Property="Background" Value="Transparent" />
     </Style>
 
-    <!-- TabControl with hidden headers (we drive via sidebar) -->
     <Style x:Key="HiddenTabs" TargetType="TabControl">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -315,7 +350,6 @@
             <Setter.Value>
                 <ControlTemplate TargetType="TabControl">
                     <Grid>
-                        <!-- Hide the headers entirely; sidebar drives selection -->
                         <ContentPresenter ContentSource="SelectedContent" />
                     </Grid>
                 </ControlTemplate>
@@ -323,13 +357,13 @@
         </Setter>
     </Style>
 
-    <!-- Glyph text style (icon + text nav row) -->
     <Style x:Key="NavGlyph" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
         <Setter Property="FontSize" Value="16" />
         <Setter Property="Width" Value="22" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
     </Style>
 
     <Style x:Key="NavLabel" TargetType="TextBlock">
