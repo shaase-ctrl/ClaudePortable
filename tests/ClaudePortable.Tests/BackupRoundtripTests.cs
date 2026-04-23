@@ -38,7 +38,7 @@ public class BackupRoundtripTests : IDisposable
             new("claudeCodeUserProfile", dotClaude, Directory.Exists(dotClaude), "test"),
         });
 
-        var engine = new BackupEngine(discovery, new ZipArchiveWriter());
+        var engine = new BackupEngine(discovery, new ZipArchiveWriter(), NullCoworkProjectDiscovery.Instance);
         var outcome = await engine.CreateBackupAsync(new(destination, RetentionTier.Daily));
 
         Assert.True(File.Exists(outcome.ZipPath));
@@ -67,7 +67,7 @@ public class BackupRoundtripTests : IDisposable
             new("claudeCodeUserProfile", dotClaude, true, "test"),
         });
 
-        var engine = new BackupEngine(discovery, new ZipArchiveWriter());
+        var engine = new BackupEngine(discovery, new ZipArchiveWriter(), NullCoworkProjectDiscovery.Instance);
         var outcome = await engine.CreateBackupAsync(new(destination, RetentionTier.Daily, DryRun: true));
 
         Assert.True(outcome.WasDryRun);
@@ -91,7 +91,7 @@ public class BackupRoundtripTests : IDisposable
             new("claudeCodeUserProfile", dotClaude, true, "test"),
         });
 
-        var engine = new BackupEngine(discovery, new ZipArchiveWriter());
+        var engine = new BackupEngine(discovery, new ZipArchiveWriter(), NullCoworkProjectDiscovery.Instance);
         var outcome = await engine.CreateBackupAsync(new(destination, RetentionTier.Daily));
 
         using var archive = ZipFile.OpenRead(outcome.ZipPath);

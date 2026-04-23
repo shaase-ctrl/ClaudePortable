@@ -38,6 +38,16 @@ public sealed record BackupManifest
     [JsonPropertyName("sourcePaths")]
     public Dictionary<string, string> SourcePaths { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Maps archive-prefix (as it appears inside the zip, e.g.
+    /// "claude-desktop/appdata" or "cowork-projects/a7b3") to the
+    /// absolute path the files came from on the backup machine.
+    /// Restore reads this to know where to write each archived tree.
+    /// Added in 2026-04-23 alongside Cowork-project auto-backup.
+    /// </summary>
+    [JsonPropertyName("archiveTargets")]
+    public Dictionary<string, string> ArchiveTargets { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+
     [JsonPropertyName("sizeBytes")]
     public long SizeBytes { get; init; }
 

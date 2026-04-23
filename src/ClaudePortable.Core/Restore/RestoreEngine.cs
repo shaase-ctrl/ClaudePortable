@@ -12,7 +12,13 @@ public sealed class RestoreEngine : IRestoreEngine
 {
     private static readonly string[] NotInBackupWarning = ["Not present in backup — nothing to restore for this target."];
 
-    private static readonly (string ArchivePrefix, string EnvRelative)[] RestoreMap =
+    /// <summary>
+    /// Fallback map used when the backup's manifest does not carry
+    /// <see cref="BackupManifest.ArchiveTargets"/> (v0.1.12 and earlier).
+    /// For those older zips we still need to know where each archive
+    /// prefix should be restored.
+    /// </summary>
+    private static readonly (string ArchivePrefix, string EnvRelative)[] LegacyRestoreMap =
     [
         ("claude-desktop/appdata", @"%APPDATA%\Claude"),
         ("claude-desktop/localappdata", @"%LOCALAPPDATA%\Claude"),
@@ -89,19 +95,14 @@ public sealed class RestoreEngine : IRestoreEngine
             var safetyBackups = new List<string>();
             var perTargetReports = new List<RestoreTargetReport>();
 
-            foreach (var (archivePrefix, envRelative) in RestoreMap)
+            var restorePlan = BuildRestorePlan(manifest, request, oldUserProfile, newUserProfile);
+
+            foreach (var (archivePrefix, targetDir) in restorePlan)
             {
                 var sourceDir = Path.Combine(tempRoot, archivePrefix.Replace('/', Path.DirectorySeparatorChar));
-                var targetDir = Environment.ExpandEnvironmentVariables(envRelative);
-                if (request.TargetUserProfile is not null)
-                {
-                    targetDir = RewriteEnvPath(envRelative, request.TargetUserProfile);
-                }
 
                 if (!Directory.Exists(sourceDir))
                 {
-                    // Record an explicit "not present" entry so the caller can
-                    // see which archive prefixes were or weren't in the ZIP.
                     perTargetReports.Add(new RestoreTargetReport(
                         archivePrefix,
                         targetDir,
@@ -155,6 +156,75 @@ public sealed class RestoreEngine : IRestoreEngine
         {
             TryDeleteDirectory(tempRoot);
         }
+    }
+
+    /// <summary>
+    /// Combine the manifest's ArchiveTargets (new format) with the
+    /// legacy fallback map, returning (archivePrefix, effectiveTargetDir)
+    /// pairs. Env-var-based targets from the legacy map are expanded
+    /// against the effective user profile; literal paths from the
+    /// manifest get a username rewrite when TargetUserProfile is set.
+    /// </summary>
+    private static List<(string ArchivePrefix, string TargetDir)> BuildRestorePlan(
+        BackupManifest manifest,
+        RestoreRequest request,
+        string oldUserProfile,
+        string newUserProfile)
+    {
+        var plan = new List<(string, string)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (archivePrefix, originalPath) in manifest.ArchiveTargets)
+        {
+            var target = RewriteAbsolutePathForUser(originalPath, oldUserProfile, newUserProfile);
+            plan.Add((archivePrefix, target));
+            seen.Add(archivePrefix);
+        }
+
+        foreach (var (archivePrefix, envRelative) in LegacyRestoreMap)
+        {
+            if (seen.Contains(archivePrefix))
+            {
+                continue;
+            }
+            var target = Environment.ExpandEnvironmentVariables(envRelative);
+            if (request.TargetUserProfile is not null)
+            {
+                target = RewriteEnvPath(envRelative, request.TargetUserProfile);
+            }
+            plan.Add((archivePrefix, target));
+        }
+
+        return plan;
+    }
+
+    /// <summary>
+    /// Swap occurrences of the backup-time user profile root inside an
+    /// absolute path for the restore-time one. Handles the "sascha" ->
+    /// "sasch" case used by the cross-machine restore flow.
+    /// </summary>
+    private static string RewriteAbsolutePathForUser(string original, string oldUserProfile, string newUserProfile)
+    {
+        if (string.IsNullOrEmpty(original))
+        {
+            return original;
+        }
+        var oldNorm = oldUserProfile.TrimEnd('\\', '/');
+        var newNorm = newUserProfile.TrimEnd('\\', '/');
+        if (string.IsNullOrEmpty(oldNorm) ||
+            string.Equals(oldNorm, newNorm, StringComparison.OrdinalIgnoreCase))
+        {
+            return original;
+        }
+        if (original.StartsWith(oldNorm, StringComparison.OrdinalIgnoreCase) &&
+            (original.Length == oldNorm.Length ||
+             original[oldNorm.Length] == Path.DirectorySeparatorChar ||
+             original[oldNorm.Length] == '/' ||
+             original[oldNorm.Length] == '\\'))
+        {
+            return newNorm + original[oldNorm.Length..];
+        }
+        return original;
     }
 
     private static IReadOnlyList<int> GetRunningClaudeProcesses()

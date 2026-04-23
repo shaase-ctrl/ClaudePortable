@@ -10,17 +10,23 @@ namespace ClaudePortable.Core.Backup;
 [SupportedOSPlatform("windows")]
 public sealed class BackupEngine : IBackupEngine
 {
+    private const string CoworkProjectKeyPrefix = "coworkProject:";
+    private const string CoworkProjectArchivePrefix = "cowork-projects/";
+
     private readonly IPathDiscovery _pathDiscovery;
     private readonly IArchiveWriter _archiveWriter;
+    private readonly ICoworkProjectDiscovery _coworkDiscovery;
     private readonly TimeProvider _clock;
 
     public BackupEngine(
         IPathDiscovery pathDiscovery,
         IArchiveWriter archiveWriter,
+        ICoworkProjectDiscovery? coworkDiscovery = null,
         TimeProvider? clock = null)
     {
         _pathDiscovery = pathDiscovery;
         _archiveWriter = archiveWriter;
+        _coworkDiscovery = coworkDiscovery ?? new CoworkProjectDiscovery();
         _clock = clock ?? TimeProvider.System;
     }
 
@@ -44,15 +50,36 @@ public sealed class BackupEngine : IBackupEngine
                 "No Claude paths found on this machine. Nothing to back up.");
         }
 
+        // Cowork project folders (userSelectedFolders inside every Cowork
+        // session's metadata). Each one becomes its own backup source with
+        // archive prefix "cowork-projects/<hash>/".
+        progress?.Report(new OperationProgress("Discovering Cowork projects"));
+        var coworkProjects = _coworkDiscovery.Discover();
+
         var exclusions = new ExclusionGlob(DefaultExclusions.Globs);
         var filesPerSource = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var archiveTargets = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var entries = new List<ArchiveEntry>();
+
         foreach (var p in existingPaths)
         {
             progress?.Report(new OperationProgress($"Enumerating {p.Key}"));
             var before = entries.Count;
-            entries.AddRange(FileEnumerator.Enumerate(p.Path, MapArchivePrefix(p.Key), exclusions));
+            var archivePrefix = MapArchivePrefix(p.Key);
+            entries.AddRange(FileEnumerator.Enumerate(p.Path, archivePrefix, exclusions));
             filesPerSource[p.Key] = entries.Count - before;
+            archiveTargets[archivePrefix] = p.Path;
+        }
+
+        foreach (var project in coworkProjects)
+        {
+            progress?.Report(new OperationProgress($"Enumerating Cowork project {project.Hash}"));
+            var key = CoworkProjectKeyPrefix + project.Hash;
+            var archivePrefix = CoworkProjectArchivePrefix + project.Hash;
+            var before = entries.Count;
+            entries.AddRange(FileEnumerator.Enumerate(project.Path, archivePrefix, exclusions));
+            filesPerSource[key] = entries.Count - before;
+            archiveTargets[archivePrefix] = project.Path;
         }
 
         var createdAt = _clock.GetUtcNow();
@@ -76,7 +103,9 @@ public sealed class BackupEngine : IBackupEngine
             createdAt,
             sizeBytes: approxSizeBytes,
             fileCount: approxFileCount,
-            claudeDesktopVersion: ClaudeDesktopVersionReader.TryRead());
+            claudeDesktopVersion: ClaudeDesktopVersionReader.TryRead(),
+            coworkProjects: coworkProjects,
+            archiveTargets: archiveTargets);
 
         if (request.DryRun)
         {
