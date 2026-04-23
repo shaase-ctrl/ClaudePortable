@@ -4,6 +4,9 @@ Windows desktop app (WPF + CLI) that backs up and restores Claude Desktop, Cowor
 
 > Status: alpha, usable. Tested roundtrip from a live workstation (~14 GB `.claude` + Cowork state) to a fresh laptop with a different Windows username, via OneDrive. See the [latest release](../../releases/latest) for the current build.
 
+<img width="2208" height="1422" alt="restore complete" src="https://github.com/user-attachments/assets/18c10a51-dbe5-42f3-876d-8a866be66426" />
+
+
 ## What gets backed up
 
 | Category | Location | Notes |
