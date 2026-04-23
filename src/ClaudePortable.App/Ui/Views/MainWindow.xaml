@@ -4,8 +4,14 @@
         Title="ClaudePortable"
         Width="1120" Height="720"
         MinWidth="820" MinHeight="520"
-        WindowStartupLocation="CenterScreen">
-    <DockPanel>
+        WindowStartupLocation="CenterScreen"
+        Background="#262624"
+        Foreground="#FFFFFF"
+        FontFamily="Segoe UI"
+        FontSize="13"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="Grayscale">
+    <DockPanel Background="#262624">
 
         <!-- Status bar at the very bottom -->
         <StatusBar DockPanel.Dock="Bottom">
