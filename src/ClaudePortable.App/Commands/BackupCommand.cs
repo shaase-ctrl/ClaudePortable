@@ -77,6 +77,10 @@ public static class BackupCommand
             Console.WriteLine($"files:   {outcome.Manifest.FileCount}");
             Console.WriteLine($"bytes:   {outcome.Manifest.SizeBytes:N0}");
             Console.WriteLine($"sha256:  {outcome.Manifest.Sha256}");
+            foreach (var skipped in outcome.SkippedPaths)
+            {
+                Console.Error.WriteLine($"warning: skipped path (not present): {skipped.Key} <- {skipped.Path}");
+            }
 
             if (noRotate)
             {

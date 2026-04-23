@@ -35,6 +35,7 @@ public sealed class BackupEngine : IBackupEngine
 
         var discovered = _pathDiscovery.Discover();
         var existingPaths = discovered.Where(p => p.Exists).ToList();
+        var skippedPaths = discovered.Where(p => !p.Exists).ToList();
         if (existingPaths.Count == 0)
         {
             throw new InvalidOperationException(
@@ -50,17 +51,28 @@ public sealed class BackupEngine : IBackupEngine
         var filename = BuildFilename(createdAt, request.Tier);
         var zipPath = Path.Combine(destination, filename);
 
+        // Compute approximate size + count BEFORE archive write so the
+        // manifest embedded in the zip reports the real shape. The archive
+        // writer may later drop locked / unreadable files; the zip's
+        // manifest will then slightly over-count, which is preferable to
+        // the old behaviour (always zeroed) because humans can see that
+        // the backup intended to cover ~10k files even if a handful got
+        // skipped at write time.
+        var approxFileCount = entries.Count + 1; // + checklist
+        var approxSizeBytes = entries.Sum(e => TryGetFileSize(e.AbsolutePath));
+
         var manifestSeed = ManifestBuilder.Build(
             discovered,
             DefaultExclusions.Globs,
             request.Tier,
             createdAt,
+            sizeBytes: approxSizeBytes,
+            fileCount: approxFileCount,
             claudeDesktopVersion: ClaudeDesktopVersionReader.TryRead());
 
         if (request.DryRun)
         {
-            var preview = manifestSeed with { FileCount = entries.Count };
-            return new BackupOutcome(zipPath, preview, WasDryRun: true);
+            return new BackupOutcome(zipPath, manifestSeed, WasDryRun: true, skippedPaths);
         }
 
         var checklistEntry = BuildChecklistEntry();
@@ -79,7 +91,7 @@ public sealed class BackupEngine : IBackupEngine
                 Sha256 = archiveResult.Sha256,
             };
 
-            return new BackupOutcome(zipPath, finalManifest, WasDryRun: false);
+            return new BackupOutcome(zipPath, finalManifest, WasDryRun: false, skippedPaths);
         }
         finally
         {
@@ -93,6 +105,22 @@ public sealed class BackupEngine : IBackupEngine
                 {
                 }
             }
+        }
+    }
+
+    private static long TryGetFileSize(string path)
+    {
+        try
+        {
+            return new FileInfo(path).Length;
+        }
+        catch (IOException)
+        {
+            return 0;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return 0;
         }
     }
 

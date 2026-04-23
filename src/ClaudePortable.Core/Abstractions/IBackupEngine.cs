@@ -10,7 +10,8 @@ public sealed record BackupRequest(
 public sealed record BackupOutcome(
     string ZipPath,
     BackupManifest Manifest,
-    bool WasDryRun);
+    bool WasDryRun,
+    IReadOnlyList<DiscoveredClaudePath> SkippedPaths);
 
 public interface IBackupEngine
 {
