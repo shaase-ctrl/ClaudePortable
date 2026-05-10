@@ -51,13 +51,14 @@ Optional integrity check:
 
 ## GUI flows
 
-Launch with no arguments (or `--gui`). Warm-dark UI in the Claude Desktop style, WCAG 2.1 AA contrast throughout, visible keyboard focus rings. Five sections:
+Launch with no arguments (or `--gui`). Warm-dark UI in the Claude Desktop style, WCAG 2.1 AA contrast throughout, visible keyboard focus rings. Six sections:
 
 - **Status** - summary cards for backups / targets / discovered paths, plus a grid of existing snapshots per target.
 - **Targets** - folder list. Auto-discovers `<SyncClient>\ClaudePortable` on every recognised sync client (OneDrive Personal / Business, Dropbox, Google Drive Desktop), so a restore on a second machine picks up the first machine's backups without configuration. Manual add/remove available.
 - **Discovery** - read-only view of detected Claude paths + sync clients.
 - **Restore** - backup grid with per-row `STATUS` (`Synced` / `Cloud-only` / `Unreadable`), `Restore from file...` escape hatch for a ZIP that is not in any configured target, and an **Advanced options** panel for overriding the target user profile (e.g. restoring a `sascha` backup onto a laptop with `sasch` as the user) and for the version-gate override.
 - **Logs** - last 500 log lines from the current session, rendered mono.
+- **Schedule** - enumerates every Windows scheduled task on this machine via `schtasks.exe /Query /FO CSV /V`. ClaudePortable-managed entries are flagged green (name starts with `ClaudePortable-` or author contains `ClaudePortable`). Tasks that aren't managed but touch a Claude/Cowork/`.claude` path - including hand-written backup PowerShell scripts that compete with ClaudePortable - are flagged orange. Per-row buttons run/disable/enable/delete the task and copy its raw XML to the clipboard. Use this to spot legacy `\Claude-Desktop-Backup`-style tasks that write loose-file backups into a long-path OneDrive folder and break sync.
 
 A ProgressBar on the status bar appears for the duration of any backup or restore, showing the current phase (`Extracting archive`, `Writing cowork-projects/<hash>`, etc.) with file-level percentage. Both commands run on the thread pool so the window stays responsive during multi-GB operations.
 
@@ -74,6 +75,8 @@ claudeportable list     --in <folder> [--json]         # list backups
 claudeportable restore  --from <zip>  --yes [--target-user <path>] [--ignore-version-mismatch]
 claudeportable rotate   --in <folder> [--daily 7] [--weekly 3] [--monthly 2]
 claudeportable schedule install|show|remove|emit       # Windows Task Scheduler integration
+claudeportable schedule list [--all|--managed|--relevant] [--json]  # enumerate all scheduled tasks, flag Claude relevance
+claudeportable schedule disable|enable|run <name>       # toggle / trigger a scheduled task by full name
 ```
 
 Exit codes: `0` ok, `1` usage error, `2` precondition fail (destination unwritable, Claude Desktop running), `3` runtime error (I/O, invalid backup, version block).
@@ -178,14 +181,14 @@ dotnet build
 dotnet test
 ```
 
-61 xUnit cases cover exclusion globs (incl. Claude Extensions paths that must NOT be excluded), manifest (de)serialisation, path rewriter across escaped / single-backslash / forward-slash and arbitrary home-relative paths, retention rotation simulated over 10 weeks with a fake clock, FolderTarget atomic I/O, end-to-end backup roundtrip on synthetic data, Task Scheduler XML, and version gating.
+98 xUnit cases cover exclusion globs (incl. Claude Extensions paths that must NOT be excluded), manifest (de)serialisation, path rewriter across escaped / single-backslash / forward-slash and arbitrary home-relative paths, retention rotation simulated over 10 weeks with a fake clock, FolderTarget atomic I/O, end-to-end backup roundtrip on synthetic data, Task Scheduler XML emission, version gating, and the scheduled-task enumerator (CSV parser for German-locale `schtasks.exe` output, Claude-relevance classifier, and command-shape assertions for the installer wrapper).
 
 CI runs the same commands on `windows-latest` via `.github/workflows/ci.yml`. The release pipeline at `.github/workflows/release.yml` builds the MSI + portable exe + SHA-256 on `v*` tag push and attaches them to the GitHub Release.
 
 Local portable-exe build:
 
 ```powershell
-pwsh scripts/build-exe.ps1 -Version 0.1.13
+pwsh scripts/build-exe.ps1 -Version 0.2.0
 ```
 
 Local MSI build (needs the WiX dotnet tool):
@@ -193,7 +196,7 @@ Local MSI build (needs the WiX dotnet tool):
 ```powershell
 dotnet tool install --global wix --version 7.0.0
 wix eula accept wix7
-pwsh src/ClaudePortable.Installer/build-msi.ps1 -Version 0.1.13
+pwsh src/ClaudePortable.Installer/build-msi.ps1 -Version 0.2.0
 ```
 
 ## Known limitations

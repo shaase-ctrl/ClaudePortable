@@ -27,4 +27,10 @@
     <ProjectReference Include="..\..\src\ClaudePortable.Scheduler\ClaudePortable.Scheduler.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Scheduling\Fixtures\*.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
