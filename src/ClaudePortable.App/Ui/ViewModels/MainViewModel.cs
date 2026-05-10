@@ -9,6 +9,7 @@ using ClaudePortable.Core.Discovery;
 using ClaudePortable.Core.Manifest;
 using ClaudePortable.Core.Restore;
 using ClaudePortable.Scheduler.Retention;
+using ClaudePortable.Scheduler.Scheduling;
 using ClaudePortable.Targets;
 using ClaudePortable.Targets.Models;
 
@@ -32,6 +33,7 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<BackupEntry> Backups { get; } = new();
     public ObservableCollection<DiscoveredClaudePath> ClaudePaths { get; } = new();
     public ObservableCollection<DiscoveredSyncClient> SyncClients { get; } = new();
+    public ScheduledTasksViewModel ScheduledTasks { get; } = new(new TaskSchedulerInstaller());
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "Instance binding target for XAML.")]
     public ObservableCollection<string> LogEntries => UiLogSink.Instance.Entries;

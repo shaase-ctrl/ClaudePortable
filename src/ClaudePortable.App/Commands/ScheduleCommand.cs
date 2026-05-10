@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Globalization;
 using System.Runtime.Versioning;
+using System.Text.Json;
 using ClaudePortable.Scheduler.Scheduling;
 
 namespace ClaudePortable.App.Commands;
@@ -10,11 +11,15 @@ public static class ScheduleCommand
 {
     public static Command Build()
     {
-        var cmd = new Command("schedule", "Install, inspect, or remove a Windows Task Scheduler entry that runs daily backups.");
+        var cmd = new Command("schedule", "Install, inspect, list, or remove Windows Task Scheduler entries.");
         cmd.AddCommand(BuildInstall());
         cmd.AddCommand(BuildShow());
         cmd.AddCommand(BuildRemove());
         cmd.AddCommand(BuildEmit());
+        cmd.AddCommand(BuildList());
+        cmd.AddCommand(BuildDisable());
+        cmd.AddCommand(BuildEnable());
+        cmd.AddCommand(BuildRun());
         return cmd;
     }
 
@@ -116,6 +121,169 @@ public static class ScheduleCommand
         }, nameOption);
         return remove;
     }
+
+    private static Command BuildList()
+    {
+        var allOption = new Option<bool>(new[] { "--all" }, () => false, "Include foreign tasks unrelated to Claude (default: hide them).");
+        var managedOption = new Option<bool>(new[] { "--managed" }, () => false, "Only list ClaudePortable-managed tasks.");
+        var relevantOption = new Option<bool>(new[] { "--relevant" }, () => false, "Only list ClaudePortable + Claude-related tasks (default).");
+        var jsonOption = new Option<bool>(new[] { "--json" }, () => false, "Emit JSON instead of an aligned table.");
+        var list = new Command("list", "List Windows scheduled tasks and flag Claude relevance.")
+        {
+            allOption, managedOption, relevantOption, jsonOption,
+        };
+        list.SetHandler(async (all, managed, relevant, json) =>
+        {
+            var installer = new TaskSchedulerInstaller();
+            var tasks = await installer.EnumerateAsync().ConfigureAwait(false);
+
+            IEnumerable<ScheduledTaskInfo> filtered = tasks;
+            if (managed)
+            {
+                filtered = filtered.Where(t => t.ManagedBy == ManagedBy.ClaudePortable);
+            }
+            else if (all)
+            {
+                // no filter
+            }
+            else
+            {
+                filtered = filtered.Where(t => t.ManagedBy is ManagedBy.ClaudePortable or ManagedBy.ForeignRelevant);
+            }
+
+            _ = relevant;
+
+            var ordered = filtered
+                .OrderBy(t => t.ManagedBy)
+                .ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (json)
+            {
+                var payload = new
+                {
+                    tasks = ordered.Select(t => new
+                    {
+                        name = t.Name,
+                        fullName = t.FullName,
+                        folderPath = t.FolderPath,
+                        managedBy = t.ManagedBy.ToString(),
+                        state = t.State,
+                        author = t.Author,
+                        nextRun = t.NextRunTime?.ToString("o", CultureInfo.InvariantCulture),
+                        lastRun = t.LastRunTime?.ToString("o", CultureInfo.InvariantCulture),
+                        lastResult = t.LastResult,
+                        action = new
+                        {
+                            executable = t.Action.Executable,
+                            arguments = t.Action.Arguments,
+                            workingDirectory = t.Action.WorkingDirectory,
+                        },
+                        trigger = t.TriggerSummary,
+                    }),
+                };
+                Console.WriteLine(JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }));
+                return;
+            }
+
+            if (ordered.Count == 0)
+            {
+                Console.WriteLine("(no tasks matched the filter)");
+                return;
+            }
+
+            var headers = new[] { "NAME", "MANAGED-BY", "STATE", "NEXT RUN", "ACTION" };
+            var rows = ordered.Select(t => new[]
+            {
+                t.FullName,
+                t.ManagedBy.ToString(),
+                t.State,
+                t.NextRunTime?.LocalDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) ?? "-",
+                Truncate(string.IsNullOrEmpty(t.Action.Arguments) ? t.Action.Executable : $"{t.Action.Executable} {t.Action.Arguments}", 80),
+            }).ToList();
+
+            var widths = headers
+                .Select((h, i) => Math.Max(h.Length, rows.Count == 0 ? 0 : rows.Max(r => r[i]?.Length ?? 0)))
+                .ToArray();
+
+            Console.WriteLine(string.Join("  ", headers.Select((h, i) => h.PadRight(widths[i]))));
+            Console.WriteLine(string.Join("  ", widths.Select(w => new string('-', w))));
+            foreach (var row in rows)
+            {
+                Console.WriteLine(string.Join("  ", row.Select((c, i) => (c ?? string.Empty).PadRight(widths[i]))));
+            }
+        }, allOption, managedOption, relevantOption, jsonOption);
+        return list;
+    }
+
+    private static Command BuildDisable()
+    {
+        var nameArg = new Argument<string>("name", "Full task name (e.g. \\ClaudePortable-Daily).");
+        var disable = new Command("disable", "Disable a scheduled task via schtasks.exe /Change /Disable.")
+        {
+            nameArg,
+        };
+        disable.SetHandler(async taskName =>
+        {
+            var installer = new TaskSchedulerInstaller();
+            var exit = await installer.DisableAsync(taskName).ConfigureAwait(false);
+            if (exit != 0)
+            {
+                Console.Error.WriteLine($"error: schtasks.exe /Change /Disable exited with code {exit}.");
+                Environment.ExitCode = 3;
+                return;
+            }
+            Console.WriteLine($"disabled '{taskName}'.");
+        }, nameArg);
+        return disable;
+    }
+
+    private static Command BuildEnable()
+    {
+        var nameArg = new Argument<string>("name", "Full task name (e.g. \\ClaudePortable-Daily).");
+        var enable = new Command("enable", "Enable a scheduled task via schtasks.exe /Change /Enable.")
+        {
+            nameArg,
+        };
+        enable.SetHandler(async taskName =>
+        {
+            var installer = new TaskSchedulerInstaller();
+            var exit = await installer.EnableAsync(taskName).ConfigureAwait(false);
+            if (exit != 0)
+            {
+                Console.Error.WriteLine($"error: schtasks.exe /Change /Enable exited with code {exit}.");
+                Environment.ExitCode = 3;
+                return;
+            }
+            Console.WriteLine($"enabled '{taskName}'.");
+        }, nameArg);
+        return enable;
+    }
+
+    private static Command BuildRun()
+    {
+        var nameArg = new Argument<string>("name", "Full task name (e.g. \\ClaudePortable-Daily).");
+        var run = new Command("run", "Trigger a scheduled task immediately via schtasks.exe /Run.")
+        {
+            nameArg,
+        };
+        run.SetHandler(async taskName =>
+        {
+            var installer = new TaskSchedulerInstaller();
+            var exit = await installer.RunNowAsync(taskName).ConfigureAwait(false);
+            if (exit != 0)
+            {
+                Console.Error.WriteLine($"error: schtasks.exe /Run exited with code {exit}.");
+                Environment.ExitCode = 3;
+                return;
+            }
+            Console.WriteLine($"triggered '{taskName}'.");
+        }, nameArg);
+        return run;
+    }
+
+    private static string Truncate(string s, int max)
+        => s.Length <= max ? s : s[..(max - 3)] + "...";
 
     private static Command BuildEmit()
     {
