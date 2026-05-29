@@ -127,25 +127,29 @@ if (-not (Test-PathExists $manifestPath 'manifest.json')) {
             }
         }
 
-        # SHA-256 consistency check
-        if ($manifest.sha256 -and $manifest.sha256.ToLower() -eq $zipSha) {
-            Write-Result 'SHA-256 integrity' $true 'ZIP hash matches manifest'
-        } elseif ($manifest.sha256) {
-            Write-Result 'SHA-256 integrity' $false "Expected $($manifest.sha256), got $zipSha"
+        # Manifest sha256 is a CONTENT hash (sorted relativePath + file bytes;
+        # see ZipArchiveWriter.ComputeContentHashAsync), NOT the hash of the
+        # .zip container - a zip cannot embed its own file hash. So assert the
+        # field is a well-formed digest, not that it equals the zip-file hash.
+        if ($manifest.sha256 -and $manifest.sha256 -match '^[0-9a-fA-F]{64}$') {
+            Write-Result 'Manifest content hash present' $true "sha256=$($manifest.sha256)"
         } else {
-            Write-Result 'SHA-256 integrity' $false 'Manifest has no sha256 field' -Warning
+            Write-Result 'Manifest content hash present' $false 'sha256 missing or not a 64-char hex digest'
         }
 
-        # Source paths sanity
-        if ($manifest.sourcePaths.Count -gt 0) {
-            Write-Result 'Source paths populated' $true "$($manifest.sourcePaths.Count) entries"
+        # sourcePaths / archiveTargets serialize as JSON objects (C# Dictionary),
+        # so count their properties - the intrinsic .Count is always 1 on a
+        # PSCustomObject regardless of key count.
+        $sourceCount = @($manifest.sourcePaths.PSObject.Properties).Count
+        if ($sourceCount -gt 0) {
+            Write-Result 'Source paths populated' $true "$sourceCount entries"
         } else {
             Write-Result 'Source paths populated' $false 'No source paths in manifest'
         }
 
-        # Archive targets sanity
-        if ($manifest.archiveTargets.Count -gt 0) {
-            Write-Result 'Archive targets populated' $true "$($manifest.archiveTargets.Count) entries"
+        $targetCount = @($manifest.archiveTargets.PSObject.Properties).Count
+        if ($targetCount -gt 0) {
+            Write-Result 'Archive targets populated' $true "$targetCount entries"
         } else {
             Write-Result 'Archive targets populated' $false 'No archive targets in manifest'
         }
@@ -173,21 +177,34 @@ foreach ($item in $expectedDirs) {
 }
 
 # --- 4. Check credential exclusions ---
+# DefaultExclusions.Globs removes these. Match by file NAME across the tree:
+# Get-ChildItem -Filter does not understand '**/' or path separators, so the
+# original globbed patterns silently matched nothing and always reported PASS.
 Write-Host '[4/6] Checking credential exclusions...' -ForegroundColor Yellow
-$excludedPatterns = @(
-    @{ Pattern = '**/tokens.dat'; Label = 'OAuth tokens (tokens.dat)' },
-    @{ Pattern = '**/Login Data*'; Label = 'Browser login data' },
-    @{ Pattern = '**/Cookies*'; Label = 'Browser cookies' },
-    @{ Pattern = '**/config.json'; Label = 'Claude config with tokenCache' }
-)
+$allFiles = Get-ChildItem -Path $RestoreDir -Recurse -File -ErrorAction SilentlyContinue
 
-foreach ($item in $excludedPatterns) {
-    $matches = Get-ChildItem -Path $RestoreDir -Recurse -File -Filter $item.Pattern -ErrorAction SilentlyContinue
-    if ($matches.Count -eq 0) {
+$nameExclusions = @(
+    @{ Match = { $_.Name -eq 'tokens.dat' };    Label = 'OAuth tokens (tokens.dat)' },
+    @{ Match = { $_.Name -like 'Login Data*' }; Label = 'Browser login data' },
+    @{ Match = { $_.Name -like 'Cookies*' };    Label = 'Browser cookies' }
+)
+foreach ($item in $nameExclusions) {
+    $hits = @($allFiles | Where-Object $item.Match)
+    if ($hits.Count -eq 0) {
         Write-Result "Exclusion: $($item.Label)" $true 'Not found (correctly excluded)'
     } else {
-        Write-Result "Exclusion: $($item.Label)" $false "Found $($matches.Count) file(s): $($matches.FullName -join ', ')"
+        Write-Result "Exclusion: $($item.Label)" $false "Found $($hits.Count) file(s): $($hits.FullName -join ', ')"
     }
+}
+
+# config.json is excluded ONLY at the specific path claude-desktop/appdata/config.json
+# (DefaultExclusions.Globs). Other config.json files are legitimately backed up,
+# so assert that exact path is absent rather than every config.json.
+$claudeConfig = Join-Path $RestoreDir 'claude-desktop/appdata/config.json'
+if (-not (Test-Path $claudeConfig -PathType Leaf)) {
+    Write-Result 'Exclusion: Claude config (claude-desktop/appdata/config.json)' $true 'Not found (correctly excluded)'
+} else {
+    Write-Result 'Exclusion: Claude config (claude-desktop/appdata/config.json)' $false "Present: $claudeConfig"
 }
 
 # --- 5. MCP server verification ---
@@ -200,7 +217,7 @@ if (Test-PathExists $configPath 'claude_desktop_config.json') {
             $mcpKeys = @($config.mcpServers.PSObject.Properties.Name)
             Write-Result 'MCP servers in config' $true "$($mcpKeys.Count) server(s): $($mcpKeys -join ', ')"
 
-            if ($ExpectedMcpServers.Count -gt 0) {
+            if ($ExpectedMcpServers -and $ExpectedMcpServers.Count -gt 0) {
                 $missing = $ExpectedMcpServers | Where-Object { $_ -notin $mcpKeys }
                 if ($missing.Count -eq 0) {
                     Write-Result 'MCP servers match expected' $true 'All expected servers present'

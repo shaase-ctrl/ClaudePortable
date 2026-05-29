@@ -2,7 +2,6 @@ using System.Reflection;
 using System.Runtime.Versioning;
 using System.Windows;
 using ClaudePortable.App.Ui.Views;
-using Serilog;
 
 namespace ClaudePortable.App.Ui;
 
@@ -15,10 +14,6 @@ public static class App
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown,
         };
-
-        // Wire Serilog as a secondary sink for the GUI so log lines
-        // appear both in the file and in the UiLogSink (Logs tab).
-        Log.Logger = Log.Logger.ForSubLogger();
 
         LoadThemeResources(app);
 

@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using ClaudePortable.App.Commands;
 using Serilog;
@@ -78,7 +79,9 @@ public static class Program
                 Path.Combine(logDir, "claudeportable-.log"),
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 30,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .WriteTo.Console()
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                formatProvider: CultureInfo.InvariantCulture)
+            .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
             .CreateLogger();
     }
+}
