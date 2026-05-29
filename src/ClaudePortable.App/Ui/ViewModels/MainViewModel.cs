@@ -115,9 +115,18 @@ public sealed class MainViewModel : ViewModelBase
     public AsyncRelayCommand RestoreCommand { get; }
     public AsyncRelayCommand RestoreFromFileCommand { get; }
     public RelayCommand PickTargetProfileCommand { get; }
+    public RelayCommand OpenChecklistCommand { get; }
 
     public TargetEntry? SelectedTarget { get; set; }
     public BackupEntry? SelectedBackup { get; set; }
+
+    private string _postRestoreChecklistPath = string.Empty;
+
+    public string PostRestoreChecklistPath
+    {
+        get => _postRestoreChecklistPath;
+        private set => SetField(ref _postRestoreChecklistPath, value);
+    }
 
     public MainViewModel()
     {
@@ -149,6 +158,7 @@ public sealed class MainViewModel : ViewModelBase
         RestoreCommand = new AsyncRelayCommand(RestoreAsync, () => SelectedBackup is not null);
         RestoreFromFileCommand = new AsyncRelayCommand(RestoreFromFileAsync);
         PickTargetProfileCommand = new RelayCommand(PickTargetProfile);
+        OpenChecklistCommand = new RelayCommand(OpenChecklist, () => !string.IsNullOrEmpty(PostRestoreChecklistPath));
 
         _ = RefreshAsync();
     }
@@ -376,6 +386,8 @@ public sealed class MainViewModel : ViewModelBase
             var totalWarnings = outcome.PerTargetReports.Sum(r => r.Warnings.Count);
             UiLogSink.Instance.Append($"restore complete. safety backups: {outcome.SafetyBackups.Count}, warnings: {totalWarnings}");
             UiLogSink.Instance.Append($"version gate: {outcome.VersionGate.Level} - {outcome.VersionGate.Message}");
+
+            PostRestoreChecklistPath = outcome.PostRestoreChecklistPath;
             Status = totalWarnings == 0
                 ? $"Restore complete. Checklist: {outcome.PostRestoreChecklistPath}"
                 : $"Restore complete with {totalWarnings} warning(s). See Logs tab.";
@@ -465,6 +477,29 @@ public sealed class MainViewModel : ViewModelBase
         // Give Windows a beat to release handles + flush pending writes.
         await Task.Delay(1500).ConfigureAwait(true);
         return System.Diagnostics.Process.GetProcessesByName("Claude").Length == 0;
+    }
+
+    private void OpenChecklist()
+    {
+        if (string.IsNullOrEmpty(PostRestoreChecklistPath) || !File.Exists(PostRestoreChecklistPath))
+        {
+            Status = "No checklist available yet. Run a restore first.";
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = PostRestoreChecklistPath,
+                UseShellExecute = true,
+            });
+            Status = $"Opened checklist: {PostRestoreChecklistPath}";
+        }
+        catch (Exception ex)
+        {
+            Status = $"Could not open checklist: {ex.Message}";
+        }
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Serilog;
 
 namespace ClaudePortable.App.Ui.Services;
 
@@ -18,5 +19,7 @@ public sealed class UiLogSink
         {
             Entries.RemoveAt(0);
         }
+
+        Log.Information("{Message}", line);
     }
 }

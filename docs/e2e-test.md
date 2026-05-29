@@ -67,10 +67,16 @@ Run this before tagging a release that changes anything in `ClaudePortable.Core`
 
 ## Automating the verification (optional)
 
-A PowerShell verification script template lives in `scripts/e2e-verify.ps1` (TODO, not yet written). It should:
-1. Check `Test-Path` for each path in `WindowsPathDiscovery`.
-2. Read the restored `claude_desktop_config.json`, assert `mcpServers` keys match the pre-backup capture.
-3. Read `extensions-installations.json`, diff extensions list against the backup manifest `sourcePaths`.
-4. Assert `config.json` was NOT restored (file size should be 0 or absent).
+A PowerShell verification script lives in `scripts/e2e-verify.ps1`. It:
+1. Extracts the backup ZIP to a temp directory.
+2. Validates `manifest.json` schema, required fields, and SHA-256 integrity.
+3. Checks that expected backup content directories exist with file counts.
+4. Asserts credential-bearing files (`tokens.dat`, `Login Data*`, `Cookies*`, `config.json`) are correctly excluded.
+5. Verifies MCP server keys in `claude_desktop_config.json` against an optional expected list.
+6. Checks that a post-restore checklist markdown was generated with required sections.
 
-This script is a follow-up; see the "Automate E2E verification" issue on the repo.
+Usage:
+```powershell
+.\scripts\e2e-verify.ps1 -BackupZip ".\claude-backup_20260529.zip"
+.\scripts\e2e-verify.ps1 -BackupZip ".\backup.zip" -ExpectedMcpServers @("gmail", "slack")
+```
