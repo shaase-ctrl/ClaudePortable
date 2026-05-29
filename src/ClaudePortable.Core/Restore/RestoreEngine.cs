@@ -4,6 +4,7 @@ using System.Runtime.Versioning;
 using ClaudePortable.Core.Abstractions;
 using ClaudePortable.Core.Discovery;
 using ClaudePortable.Core.Manifest;
+using ClaudePortable.Core.Post;
 
 namespace ClaudePortable.Core.Restore;
 
@@ -139,16 +140,15 @@ public sealed class RestoreEngine : IRestoreEngine
                     warnings));
             }
 
-            var checklistSource = Path.Combine(tempRoot, "post-restore-checklist.md");
             var checklistDest = Path.Combine(
                 Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"),
                 "ClaudePortable",
                 $"post-restore-checklist-{now.UtcDateTime:yyyy-MM-dd-HHmmss}.md");
             Directory.CreateDirectory(Path.GetDirectoryName(checklistDest)!);
-            if (File.Exists(checklistSource))
-            {
-                File.Copy(checklistSource, checklistDest, overwrite: true);
-            }
+
+            var checklistContent = PostRestoreChecklistBuilder.Build(
+                manifest, gate, safetyBackups, perTargetReports);
+            await File.WriteAllTextAsync(checklistDest, checklistContent, cancellationToken).ConfigureAwait(false);
 
             return new RestoreOutcome(manifest, safetyBackups, checklistDest, gate, perTargetReports);
         }

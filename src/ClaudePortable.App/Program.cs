@@ -1,6 +1,8 @@
 using System.CommandLine;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using ClaudePortable.App.Commands;
+using Serilog;
 using UiApp = ClaudePortable.App.Ui.App;
 
 namespace ClaudePortable.App;
@@ -12,6 +14,8 @@ public static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        ConfigureLogging();
+
         if (args.Length == 0 || args.Contains("--gui"))
         {
             return UiApp.RunGui();
@@ -60,4 +64,24 @@ public static class Program
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool AttachConsole(int processId);
+
+    private static void ConfigureLogging()
+    {
+        var logDir = Path.Combine(
+            Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"),
+            "ClaudePortable",
+            "logs");
+        Directory.CreateDirectory(logDir);
+
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .WriteTo.File(
+                Path.Combine(logDir, "claudeportable-.log"),
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 30,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                formatProvider: CultureInfo.InvariantCulture)
+            .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+            .CreateLogger();
+    }
 }

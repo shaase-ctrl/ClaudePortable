@@ -14,6 +14,7 @@
         TextOptions.TextRenderingMode="Grayscale">
     <Window.Resources>
         <conv:ManagedByToBrushConverter x:Key="ManagedByToBrush" />
+        <conv:StringToVisibleConverter x:Key="StringToVisible" />
     </Window.Resources>
     <DockPanel Background="#262624">
 
@@ -295,6 +296,10 @@
                                 Margin="0,0,8,0" />
                         <Button Content="Restore from file..."
                                 Command="{Binding RestoreFromFileCommand}" />
+                        <Button Content="Open Checklist"
+                                Command="{Binding OpenChecklistCommand}"
+                                Margin="8,0,0,0"
+                                Visibility="{Binding PostRestoreChecklistPath, Converter={StaticResource StringToVisible}}" />
                     </StackPanel>
 
                     <Expander Grid.Row="5" Margin="0,16,0,0"
