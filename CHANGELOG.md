@@ -4,6 +4,43 @@ All notable changes to ClaudePortable are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-29
+
+### Added
+
+- **Serilog file logging.** CLI and GUI write a rolling daily log to
+  `%LOCALAPPDATA%\ClaudePortable\logs\claudeportable-.log` (30-day
+  retention). The GUI Logs tab still mirrors live output.
+- **Dynamic post-restore checklist** generated from the restore result -
+  version-gate warnings, `.claude/plugins` reinstall hints, safety-backup
+  paths, and a per-target restore summary - written to
+  `%LOCALAPPDATA%\ClaudePortable\post-restore-checklist-<timestamp>.md`, with
+  an "Open Checklist" button in the Restore tab after a restore completes.
+- **`scripts/e2e-verify.ps1`** - automated backup-ZIP verification: manifest
+  schema and required fields, expected content directories, credential
+  exclusions (`tokens.dat`, `Login Data*`, `Cookies*`,
+  `claude-desktop/appdata/config.json`), MCP-server key comparison, and
+  post-restore checklist section checks.
+
+### Changed
+
+- Post-restore checklist text is now English (was German).
+- `scripts/build-exe.ps1` and `src/ClaudePortable.Installer/build-msi.ps1`
+  default version bumped from `0.2.0` to `0.3.0`.
+
+### Fixed
+
+- The logging/checklist/e2e work did not compile; restored a buildable
+  state - added the real Serilog sink packages (`Serilog.Sinks.File`,
+  `Serilog.Sinks.Console`), a missing `Program` class brace, `CA1305`
+  format-provider arguments, an unresolved `RestoreTargetReport` import, the
+  `StringToVisibleConverter` `System.Windows` import, and a parameterless
+  `PostRestoreChecklistBuilder.Build()` overload so the backup path compiles.
+- `scripts/e2e-verify.ps1` correctness - assert the manifest's content hash
+  is a valid digest (it is not the zip-file hash), match credential
+  exclusions by file name (`-Filter **/...` matched nothing and always
+  passed), and count manifest dictionary keys correctly.
+
 ## [0.2.0] - 2026-05-10
 
 ### Added
