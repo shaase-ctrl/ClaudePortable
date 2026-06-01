@@ -4,6 +4,23 @@ All notable changes to ClaudePortable are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Discovery no longer shows a permanently-empty `coworkSessions` row.**
+  The `%USERPROFILE%\.cowork` candidate was an unverified Spec 1.1 guess that
+  does not exist on the Store-app Claude Desktop, so its read-only EXISTS box
+  always rendered unchecked and looked like a broken toggle. Removed the
+  vestigial entry from `WindowsPathDiscovery` and its `cowork/sessions`
+  archive-prefix mapping. Cowork data is unaffected: session state under
+  `%APPDATA%\Claude\local-agent-mode-sessions` is already covered by the
+  Claude Desktop AppData path, and project folders are captured by
+  `CoworkProjectDiscovery` under `cowork-projects/<hash>`. The Discovery
+  caption now explains that EXISTS is a status indicator, not a toggle. The
+  restore-side legacy mapping for `cowork/sessions` is retained so older ZIPs
+  still restore correctly.
+
 ## [0.3.0] - 2026-05-29
 
 ### Added

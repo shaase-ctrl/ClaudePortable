@@ -224,7 +224,7 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Style="{DynamicResource H1}" Text="Discovery" />
-                    <TextBlock Style="{DynamicResource Caption}" Text="What ClaudePortable found on this machine. Paths that do not exist are skipped during backup." Margin="0,0,0,20" Grid.Row="1" TextWrapping="Wrap" />
+                    <TextBlock Style="{DynamicResource Caption}" Margin="0,0,0,20" Grid.Row="1" TextWrapping="Wrap">What ClaudePortable found on this machine. The EXISTS column is a read-only status indicator, not a toggle - paths that do not exist are skipped during backup. Cowork is not listed as its own row: session state lives under <Run FontFamily="{DynamicResource MonoFont}">AppData\Roaming\Claude\local-agent-mode-sessions</Run> (already covered by the Claude Desktop AppData row), and the project folders you opened in Cowork are auto-discovered and backed up separately.</TextBlock>
 
                     <TextBlock Style="{DynamicResource H2}" Text="Claude paths" Grid.Row="2" Margin="0,0,0,8" />
                     <Border Style="{DynamicResource Card}" Padding="0" Grid.Row="3">
