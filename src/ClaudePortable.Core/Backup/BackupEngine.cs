@@ -173,7 +173,6 @@ public sealed class BackupEngine : IBackupEngine
         "claudeDesktopAppData" => "claude-desktop/appdata",
         "claudeDesktopLocalAppData" => "claude-desktop/localappdata",
         "claudeCodeUserProfile" => "claude-code/dotclaude",
-        "coworkSessions" => "cowork/sessions",
         _ => key,
     };
 

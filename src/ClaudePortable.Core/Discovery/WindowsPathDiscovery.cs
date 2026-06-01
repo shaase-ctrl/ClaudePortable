@@ -29,11 +29,18 @@ public sealed class WindowsPathDiscovery : IPathDiscovery
             new[] { @"%USERPROFILE%\.claude" },
             "Spec 1.1 + verified 2026-04-22"
         ),
-        (
-            "coworkSessions",
-            new[] { @"%USERPROFILE%\.cowork" },
-            "Spec 1.1 (assumed, ProcMon pending)"
-        ),
+        // NOTE: there is intentionally no "coworkSessions" entry here.
+        // The original Spec 1.1 guess of %USERPROFILE%\.cowork was never
+        // verified and does not exist on the Store-app Claude Desktop.
+        // Phase-0 verification (docs/discovered-paths.md, 2026-04-23)
+        // established that Cowork session state actually lives under
+        // %APPDATA%\Claude\local-agent-mode-sessions\<guid>\..., which is a
+        // subfolder of "claudeDesktopAppData" above and is therefore already
+        // backed up. The user-selected project roots referenced by those
+        // sessions are captured separately by CoworkProjectDiscovery under
+        // the "cowork-projects/<hash>" archive prefix. A standalone .cowork
+        // row would only ever show EXISTS = false and would duplicate the
+        // local-agent-mode-sessions subtree in the ZIP if repointed.
         (
             "claudeDesktopLocalAppData",
             new[]
