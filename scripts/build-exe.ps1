@@ -15,11 +15,11 @@
     Debug or Release (default Release).
 
 .EXAMPLE
-    pwsh .\build-exe.ps1 -Version 0.3.0
+    pwsh .\build-exe.ps1 -Version 0.3.1
 #>
 
 param(
-  [string] $Version = "0.3.0",
+  [string] $Version = "0.3.1",
   [string] $Configuration = "Release"
 )
 
