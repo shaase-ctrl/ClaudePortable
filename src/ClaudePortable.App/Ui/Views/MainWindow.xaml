@@ -198,6 +198,7 @@
                                 Margin="0,0,8,0" />
                         <Button Content="Set as active"
                                 Command="{Binding SetActiveTargetCommand}"
+                                ToolTip="Make the selected folder the backup destination for 'Backup now'."
                                 Margin="0,0,8,0" />
                         <Button Content="Remove selected"
                                 Command="{Binding RemoveTargetCommand}" />
