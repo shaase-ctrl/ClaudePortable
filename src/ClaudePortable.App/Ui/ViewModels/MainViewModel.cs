@@ -90,6 +90,13 @@ public sealed class MainViewModel : ViewModelBase
 
     public bool IsNotBusy => !IsBusy;
 
+    /// <summary>
+    /// The folder "Backup now" writes into: the first (top) configured target.
+    /// "Set as active" moves a target to the top, and the list order persists
+    /// in targets.json, so this survives restarts.
+    /// </summary>
+    public string ActiveTargetPath => Targets.FirstOrDefault()?.Path ?? "(none)";
+
     public string ProgressMessage
     {
         get => _progressMessage;
@@ -112,12 +119,27 @@ public sealed class MainViewModel : ViewModelBase
     public AsyncRelayCommand RefreshCommand { get; }
     public RelayCommand AddTargetCommand { get; }
     public RelayCommand RemoveTargetCommand { get; }
+    public RelayCommand SetActiveTargetCommand { get; }
     public AsyncRelayCommand RestoreCommand { get; }
     public AsyncRelayCommand RestoreFromFileCommand { get; }
     public RelayCommand PickTargetProfileCommand { get; }
     public RelayCommand OpenChecklistCommand { get; }
 
-    public TargetEntry? SelectedTarget { get; set; }
+    private TargetEntry? _selectedTarget;
+
+    public TargetEntry? SelectedTarget
+    {
+        get => _selectedTarget;
+        set
+        {
+            if (SetField(ref _selectedTarget, value))
+            {
+                RemoveTargetCommand?.RaiseCanExecuteChanged();
+                SetActiveTargetCommand?.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
     public BackupEntry? SelectedBackup { get; set; }
 
     private string _postRestoreChecklistPath = string.Empty;
@@ -155,11 +177,15 @@ public sealed class MainViewModel : ViewModelBase
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         AddTargetCommand = new RelayCommand(AddTarget);
         RemoveTargetCommand = new RelayCommand(RemoveTarget, () => SelectedTarget is not null);
+        SetActiveTargetCommand = new RelayCommand(
+            SetActiveTarget,
+            () => SelectedTarget is not null && Targets.Count > 0 && !ReferenceEquals(Targets[0], SelectedTarget));
         RestoreCommand = new AsyncRelayCommand(RestoreAsync, () => SelectedBackup is not null);
         RestoreFromFileCommand = new AsyncRelayCommand(RestoreFromFileAsync);
         PickTargetProfileCommand = new RelayCommand(PickTargetProfile);
         OpenChecklistCommand = new RelayCommand(OpenChecklist, () => !string.IsNullOrEmpty(PostRestoreChecklistPath));
 
+        Raise(nameof(ActiveTargetPath));
         _ = RefreshAsync();
     }
 
@@ -263,6 +289,7 @@ public sealed class MainViewModel : ViewModelBase
             {
                 Targets.Add(new TargetEntry(dlg.FolderName));
                 _store.Save(Targets.Select(t => t.Path).ToArray());
+                Raise(nameof(ActiveTargetPath));
                 _ = RefreshAsync();
             }
         }
@@ -276,6 +303,30 @@ public sealed class MainViewModel : ViewModelBase
         }
         Targets.Remove(SelectedTarget);
         _store.Save(Targets.Select(t => t.Path).ToArray());
+        Raise(nameof(ActiveTargetPath));
+        SetActiveTargetCommand.RaiseCanExecuteChanged();
+        _ = RefreshAsync();
+    }
+
+    /// <summary>
+    /// Move the selected target to the top of the list so it becomes the
+    /// active backup destination, and persist the new order.
+    /// </summary>
+    public void SetActiveTarget()
+    {
+        if (SelectedTarget is null)
+        {
+            return;
+        }
+        var index = Targets.IndexOf(SelectedTarget);
+        if (index <= 0)
+        {
+            return;
+        }
+        Targets.Move(index, 0);
+        _store.Save(Targets.Select(t => t.Path).ToArray());
+        Raise(nameof(ActiveTargetPath));
+        SetActiveTargetCommand.RaiseCanExecuteChanged();
         _ = RefreshAsync();
     }
 

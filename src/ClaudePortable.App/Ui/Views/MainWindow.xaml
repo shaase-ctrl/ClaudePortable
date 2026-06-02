@@ -196,8 +196,15 @@
                                 Style="{DynamicResource PrimaryButton}"
                                 Command="{Binding AddTargetCommand}"
                                 Margin="0,0,8,0" />
+                        <Button Content="Set as active"
+                                Command="{Binding SetActiveTargetCommand}"
+                                Margin="0,0,8,0" />
                         <Button Content="Remove selected"
                                 Command="{Binding RemoveTargetCommand}" />
+                        <TextBlock Style="{DynamicResource Muted}" VerticalAlignment="Center" Margin="16,0,0,0">
+                            <Run Text="Active target:" FontWeight="SemiBold" />
+                            <Run Text="{Binding ActiveTargetPath, Mode=OneWay}" />
+                        </TextBlock>
                     </StackPanel>
 
                     <Border Style="{DynamicResource Card}" Padding="0" Grid.Row="3">
