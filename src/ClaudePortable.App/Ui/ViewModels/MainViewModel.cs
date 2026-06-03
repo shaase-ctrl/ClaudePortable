@@ -140,7 +140,19 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    public BackupEntry? SelectedBackup { get; set; }
+    private BackupEntry? _selectedBackup;
+
+    public BackupEntry? SelectedBackup
+    {
+        get => _selectedBackup;
+        set
+        {
+            if (SetField(ref _selectedBackup, value))
+            {
+                RestoreCommand?.RaiseCanExecuteChanged();
+            }
+        }
+    }
 
     private string _postRestoreChecklistPath = string.Empty;
 
