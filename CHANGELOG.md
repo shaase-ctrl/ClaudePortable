@@ -6,6 +6,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-06-03
+
+### Fixed
+
+- **Restore button stayed disabled after selecting a snapshot.** On the Restore
+  tab, "Restore selected snapshot" is gated on a backup being selected, but
+  `SelectedBackup` raised no change notification and `AsyncRelayCommand` does not
+  hook `CommandManager.RequerySuggested`, so its `CanExecute` was evaluated once
+  (nothing selected -> disabled) and never re-queried when a row was picked - the
+  button was therefore permanently greyed out. `SelectedBackup` is now a notifying
+  property that raises `RestoreCommand` `CanExecuteChanged`, matching the existing
+  `SelectedTarget` fix. "Restore from file..." was unaffected and was the
+  workaround on 0.3.1.
+
 ## [0.3.1] - 2026-06-01
 
 ### Fixed

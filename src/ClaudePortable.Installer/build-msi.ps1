@@ -10,7 +10,7 @@
 #   pwsh .\build-msi.ps1 [-Version 0.1.0] [-Configuration Release]
 
 param(
-  [string] $Version = "0.3.1",
+  [string] $Version = "0.3.2",
   [string] $Configuration = "Release"
 )
 
